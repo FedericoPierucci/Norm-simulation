@@ -32,9 +32,6 @@ patches-own [
 
 globals [
   storage  ;; amount in the central storage
-  datas-max
-  datas-min
-  datas-mean
   counter
   payoff-ticks
   increment-values
@@ -50,9 +47,6 @@ to setup
   set counter 0
   set payoff-ticks []
   set increment-values []
-  set datas-max []
-  set datas-mean []
-  set datas-min  []
   reset-ticks
 end
 
@@ -146,14 +140,6 @@ to go
     if wealth <= 0 [die]
     if age >= 100 [die]
    ]
-
-  ;; for data analysis
-
-  set datas-mean lput mean [cooperation-rate] of turtles datas-mean
-  set datas-max lput max [cooperation-rate] of turtles datas-max
-  set datas-min lput min [cooperation-rate] of turtles datas-min
-
-
    tick
 end
 
