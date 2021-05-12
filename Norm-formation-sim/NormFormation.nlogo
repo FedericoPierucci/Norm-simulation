@@ -140,6 +140,7 @@ to go
     if wealth <= 0 [die]
     if age >= 100 [die]
    ]
+
    tick
 end
 
