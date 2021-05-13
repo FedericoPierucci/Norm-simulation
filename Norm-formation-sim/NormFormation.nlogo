@@ -6,12 +6,12 @@ turtles-own [
   vision          ;; the distance that this turtle can see in the horizontal and vertical directions
   vision-points   ;; the points that this turtle can see in relative to it's current position (based on vision)
   norms          ;;  the list of norms internalized by each agents
-  cooperation-rate ;; a dynamic variable ranging from 0 to 1 that express the altruism of the turtle - used to generate lambda and epsilon and set turtle giving disposition
+  cooperation-rate ;; a dynamic variable ranging from 0 to 1 that express used to generate lambda and epsilon
   lambda  ;;   a dynamic variable ranging from 0 to 1  that express the percentage of the amount of wealth given to the storage,
           ;;  cooperative turtles will generally have higher lambda factor, but not necessarely
           ;; (ex. one turtle- could cooperate very often but give very little,
           ;; another could cooperate a few times but could be very altruistic)
-  epsilon ;; a dynamic variable ranging from 0 to 1 that express the probabily of giving to the central storage in the first place.
+  epsilon ;; a dynamic variable ranging from 0 to 1 that express the probabily of giving to the central storage and the altruism of the turtle
   age ;; the age of the turtle
   threshold-1
   threshold-2
@@ -21,6 +21,7 @@ turtles-own [
   group
   wealth-donated
   enforcing
+  norm-sensitivity
 ]
 
 
@@ -79,6 +80,7 @@ to turtle-setup ;; turtle procedure
   [set epsilon random-float-range 0 0.5
      set lambda random-float-range 0 0.5
   ]
+  set norm-sensitivity random-float 1
   set wealth-donated 0
   set selected-norm []
   set expectations []
@@ -124,16 +126,16 @@ to go
     turtle-move
     adjust-triggers
     adjust-expectations
-    lambda-cognitions
-    epsilon-cognitions
-    comparison-cognitions
+    lambda-observations
+    epsilon-observations
     act-on-cognitons
     build-norm
+    if group-behavior = true
+    [
     enforce-norm
-    if group-behavior = true [
-      adjust-group-behavior
+    norm-cognitions
+    adjust-group-behavior
     ]
-
     run coglogo:choose-next-plan
     coglogo:report-agent-data
     turtle-reproduce
@@ -174,35 +176,28 @@ to movement-cognitions
 end
 
 to contribution-cognitions
-  if any? other turtles at-points vision-points
-  [
-    if wealth > 50 [
-
-    if [cooperation-rate] of self  < (0.1) [ ;; pure selfish turtles
+    if wealth > 10 [
+    if epsilon  < (0.1) [ ;; pure selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
       coglogo:set-cogniton-value "wantsugar" 1
     ]
-    if [cooperation-rate] of self < (0.5) and [cooperation-rate] of self > (0.1) [ ;; selfish turtles
+
+    if epsilon < (0.5) and epsilon > (0.1) [ ;; selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
-      coglogo:set-cogniton-value "wantsugar" 0.5 + cooperation-rate
+      coglogo:set-cogniton-value "wantsugar" 0.5 + epsilon
       ]
 
-    if  [cooperation-rate] of self > (0.5) and [cooperation-rate] of self < (0.9) [ ;; altruistic turtles
-
+    if epsilon > (0.5) and epsilon < (0.9) [ ;; altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1
-      coglogo:set-cogniton-value "wantsugar" 0.5 - cooperation-rate
+      coglogo:set-cogniton-value "wantsugar" 0.5 - epsilon
+      ]
 
-
-  ]
-
-    if [cooperation-rate] of self > (0.9)  [ ;; pure altruistic turtles
+    if epsilon > (0.9)  [ ;; pure altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1.5
       coglogo:set-cogniton-value "wantsugar" 0
 
   ]
   ]
-  ]
-
 end
 
 to norm-cognitions
@@ -215,46 +210,23 @@ to norm-cognitions
   ]
 end
 
-to comparison-cognitions ;; build norm-actions from the observations of turtles
 
-    if any? other turtles at-points vision-points[
-     ifelse count other turtles at-points vision-points with [cooperation-rate > 0.5] > count other turtles at-points vision-points with [cooperation-rate < 0.5] [
-      if not member? "coop+" observed-norm-actions [
-        set observed-norm-actions lput "coop+" observed-norm-actions
-    ]
-    ]
-
-     [ if not member? "coop-" observed-norm-actions [
-        set observed-norm-actions lput "coop-" observed-norm-actions
-    ]
-    ]
-
-  ]
-end
-
-
-
-
-to lambda-cognitions ;; build norm-actions from observing the enviroment
+to lambda-observations ;; build norm-actions from observing the enviroment
   if any? other turtles at-points vision-points[
      ifelse count other turtles at-points vision-points with [lambda > 0.5] > count other turtles at-points vision-points with [lambda < 0.5]
-
-      [if not member? "lambda+" observed-norm-actions [
+       [if not member? "lambda+" observed-norm-actions [
         set observed-norm-actions lput "lambda+" observed-norm-actions
-
-    ]
-    ]
-
-      [if not member? "lambda-" observed-norm-actions [
+      ]
+      ]
+        [if not member? "lambda-" observed-norm-actions [
         set observed-norm-actions lput "lambda-" observed-norm-actions
-
     ]
     ]
   ]
 
 end
 
-to epsilon-cognitions ;; build norm-actions from observing enviroment
+to epsilon-observations ;; build norm-actions from observing enviroment
   if any? other turtles at-points vision-points[
     ifelse count other turtles at-points vision-points with [epsilon > 0.5] > count other turtles at-points vision-points with [epsilon < 0.5] [
       if not member? "epsilon+" observed-norm-actions [
@@ -294,14 +266,12 @@ end
 
 to turtle-contribute
   if storage? = true [
-  if wealth > 50 [
   if random-float 1 < epsilon [
     let amount-given wealth * (lambda)
     set wealth-donated wealth-donated + amount-given
     set storage storage + amount-given
     set wealth wealth - amount-given
     ]
-  ]
   ]
 end
 
@@ -314,11 +284,12 @@ to update-storage
     if member? counter payoff-ticks [
     let accumulated []
     set accumulated lput round(storage) accumulated
-      let increments n-values 100 [n -> n * 2000]
+      let increments n-values 100 [n -> n * 1000]
        foreach increments [ x -> if storage > x and storage > last accumulated [
         ask patches [
           set max-psugar max-psugar + 0.1
           ]
+        set storage storage - (last accumulated) / 2
         ]
       ]
     ]
@@ -330,12 +301,10 @@ to turtle-reproduce
   if initial-population * 2 > count turtles [
   if wealth > 100 and age > 45 [
     set wealth wealth - 100
-    let target [cooperation-rate] of self
     let target-1 [lambda] of self
     let target-2 [epsilon] of self
     hatch 1 [
     if random-float 1 < 0.5 [
-        set cooperation-rate target
         set lambda target-1
         set epsilon target-2
       ]
@@ -378,7 +347,7 @@ to adjust-triggers
 end
 
 to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes internalized. If norm is present, add the weight of the norm
-  if threshold-1 > 1 - cooperation-rate [
+  if threshold-1 > 1 - norm-sensitivity [
     if not empty? observed-norm-actions [
       let internalized last observed-norm-actions
       ifelse not table:has-key? norms internalized
@@ -389,7 +358,7 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
   ]
 
   if norms? = true [
-  if threshold-2 > 1 - cooperation-rate [
+  if threshold-2 > 1 - norm-sensitivity [
     select-norm
   ]
   ]
@@ -398,36 +367,29 @@ end
 to select-norm ;; turtle observe the norm that has internalized, and select the norm with the strongest weight. Higher cooperation rate will favor a selection for an altruist norm.
   let norm-list table:to-list norms
   if not empty? norm-list [
-  let x cooperation-rate
-  let p 1 - cooperation-rate
+  let x epsilon
+  let p 1 - epsilon
   if random-float 1 < x [
-  let selected+  ["coop+""epsilon+""lambda+"]
+  let selected+  ["epsilon+""lambda+"]
   let selected key-with-max-value (norms)
   if not empty? selected-norm [
   if not member? last selected-norm selected+ and member? selected selected+ ;; if turtle has changed norm-type, reset values
-      [set cooperation-rate 0.5
+      [
        set lambda 0.5
        set epsilon 0.5
         ]
       ]
      ;; altruistic norms
-  if selected = "coop+" [
-      set selected-norm lput "coop+" selected-norm
-      set group 1
-      set cooperation-rate cooperation-rate + 0.1
-      if cooperation-rate > 1 [set cooperation-rate 1]
-
-  ]
   if selected = "epsilon+" [
       set selected-norm lput "epsilon+" selected-norm
-      set group 2
+      set group 1
       set epsilon epsilon + 0.1
       if epsilon > 1 [ set epsilon 1]
 
   ]
   if selected = "lambda+" [
     set selected-norm lput "lambda+" selected-norm
-    set group 3
+    set group 2
     set lambda lambda + 0.1
     if lambda > 1 [set lambda 1]
   ]
@@ -436,33 +398,25 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
 
 if random-float 1 < p [
   let selected key-with-max-value (norms)
-  let selected- ["coop-""epsilon-""lambda-"]
+  let selected- ["epsilon-""lambda-"]
   if not empty? selected-norm [
   if not member? last selected-norm selected- and member? selected selected- ;; if turtle has changed norm-type, reset values
-      [set cooperation-rate 0.2
+      [
        set lambda 0.2
         set epsilon 0.2
         ]
       ]
 
-      ;; altruistic norms
-  if selected = "coop-" [
-      set selected-norm lput "coop-" selected-norm
-      set group -1
-      set cooperation-rate cooperation-rate - 0.1
-      if cooperation-rate < 0 [set cooperation-rate 0]
-
-  ]
   if selected = "epsilon-" [
       set selected-norm lput "epsilon-" selected-norm
-      set group -2
+      set group -1
       set epsilon epsilon - 0.1
       if epsilon < 0 [ set epsilon 0]
 
   ]
   if selected = "lambda-" [
     set selected-norm lput "lambda-" selected-norm
-    set group -3
+    set group -2
     set lambda lambda - 0.1
     if lambda < 0 [set lambda 0]
   ]
@@ -511,10 +465,6 @@ to adjust-expectations
 to adjust-group-behavior
   if group = one-of [1 2 3] [
   if random-float 1 < 0.5 [
-    set cooperation-rate cooperation-rate + 0.1
-    if cooperation-rate > 1 [
-      set cooperation-rate 1
-    ]
     set lambda lambda + 0.1
      if lambda > 1 [set lambda 1]
 
@@ -524,8 +474,6 @@ to adjust-group-behavior
   ]
   if group = one-of [-1 -2 -3] [
     if random-float 1 < 0.5 [
-    set cooperation-rate cooperation-rate - 0.1
-     if cooperation-rate < 0 [set cooperation-rate 0]
      set lambda lambda - 0.1
     if lambda < 0 [set lambda 0]
     set epsilon epsilon - 0.1
@@ -581,10 +529,10 @@ to color-agents-by-metabolism ;; turtle procedure
 end
 
 to color-agents-by-cooperation
-  ifelse cooperation-rate >= 0.5 [
-  set color blue + (cooperation-rate * 5 - 25)
+  ifelse epsilon >= 0.5 [
+  set color blue + (epsilon * 5 - 25)
   ]
-  [set color red + (cooperation-rate * 5 - 20)]
+  [set color red + (epsilon * 5 - 20)]
 end
 
 to-report key-with-max-value [table]
@@ -814,7 +762,7 @@ MONITOR
 82
 320
 pure altruists
-count turtles with [ cooperation-rate >= 0.9]
+count turtles with [ epsilon >= 0.9]
 17
 1
 11
@@ -825,7 +773,7 @@ MONITOR
 142
 320
 altruists
-count turtles with [ cooperation-rate >= 0.5 and cooperation-rate < 0.9]
+count turtles with [ epsilon >= 0.5 and epsilon < 0.9]
 17
 1
 11
@@ -836,7 +784,7 @@ MONITOR
 77
 370
 pure selfish
-count turtles with [ cooperation-rate <= 0.1 ]
+count turtles with [ epsilon <= 0.1 ]
 17
 1
 11
@@ -847,7 +795,7 @@ MONITOR
 145
 370
 selfish
-count turtles with [ cooperation-rate > 0.1 and cooperation-rate < 0.5]
+count turtles with [ epsilon > 0.1 and epsilon < 0.5]
 17
 1
 11
@@ -914,9 +862,8 @@ true
 true
 "" ""
 PENS
-"coop+" 1.0 0 -13840069 true "" "carefully [plot count turtles with [group = 1]][]"
-"epsilon+" 1.0 0 -14070903 true "" "carefully [plot count turtles with [group = 2]][]"
-"lambda+" 1.0 0 -2674135 true "" "carefully [plot count turtles with [group = 3]][]"
+"epsilon+" 1.0 0 -14070903 true "" "carefully [plot count turtles with [group = 1]][]"
+"lambda+" 1.0 0 -2674135 true "" "carefully [plot count turtles with [group = 2]][]"
 
 PLOT
 490
@@ -934,9 +881,8 @@ true
 true
 "" ""
 PENS
-"coop-" 1.0 0 -13840069 true "" "carefully [plot count turtles with [group = -1]][]"
-"epsilon-" 1.0 0 -14985354 true "" "carefully [plot count turtles with [group = -2]][]"
-"lambda-" 1.0 0 -2674135 true "" "carefully [plot count turtles with [group = -3]][]"
+"epsilon-" 1.0 0 -14985354 true "" "carefully [plot count turtles with [group = -1]][]"
+"lambda-" 1.0 0 -2674135 true "" "carefully [plot count turtles with [group = -2]][]"
 
 SWITCH
 115
@@ -967,7 +913,7 @@ SWITCH
 218
 selfish-norms?
 selfish-norms?
-0
+1
 1
 -1000
 
@@ -978,7 +924,7 @@ SWITCH
 268
 group-behavior
 group-behavior
-0
+1
 1
 -1000
 
@@ -991,7 +937,7 @@ initial-cooperators
 initial-cooperators
 -0.5
 0.5
-0.0
+-0.1
 0.1
 1
 NIL
