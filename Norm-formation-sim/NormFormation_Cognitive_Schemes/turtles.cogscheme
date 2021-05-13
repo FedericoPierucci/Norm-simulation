@@ -9,6 +9,7 @@ true
 0.0
 INFLUENCE
 turtle-eat=1.0
+turtle-contribute=-0.5
 DEPENDENCY
 turtle-eat
 turtle-move

@@ -29,10 +29,12 @@ turtles-own [
 patches-own [
   psugar           ;; the amount of sugar on this patch
   max-psugar       ;; the maximum amount of sugar that can be on this patch
+  incremented-psugar
 ]
 
 globals [
   storage  ;; amount in the central storage
+  accumulated-storage
   counter
   payoff-ticks
   increment-values
@@ -48,6 +50,7 @@ to setup
   set counter 0
   set payoff-ticks []
   set increment-values []
+  set accumulated-storage []
   reset-ticks
 end
 
@@ -99,6 +102,7 @@ to setup-patches
       set max-psugar file-read
       set psugar max-psugar
       patch-recolor
+      set incremented-psugar []
     ]
   ]
   file-close
@@ -176,7 +180,6 @@ to movement-cognitions
 end
 
 to contribution-cognitions
-    if wealth > 10 [
     if epsilon  < (0.1) [ ;; pure selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
       coglogo:set-cogniton-value "wantsugar" 1
@@ -189,15 +192,14 @@ to contribution-cognitions
 
     if epsilon > (0.5) and epsilon < (0.9) [ ;; altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1
-      coglogo:set-cogniton-value "wantsugar" 0.5 - epsilon
+      coglogo:set-cogniton-value "wantsugar" 1 - epsilon
       ]
 
     if epsilon > (0.9)  [ ;; pure altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1.5
       coglogo:set-cogniton-value "wantsugar" 0
+]
 
-  ]
-  ]
 end
 
 to norm-cognitions
@@ -282,19 +284,24 @@ to update-storage
   (foreach a b [[x y] -> set payoff-ticks fput (x * y) payoff-ticks])
   if resources-redistribution = true [
     if member? counter payoff-ticks [
-    let accumulated []
-    set accumulated lput round(storage) accumulated
-      let increments n-values 100 [n -> n * 1000]
-       foreach increments [ x -> if storage > x and storage > last accumulated [
+      set accumulated-storage lput round(storage) accumulated-storage
+      let increments n-values 1000 [n -> n * 1000]
+      if length accumulated-storage > 1 [
+      let second-last last (but-last accumulated-storage)
+       foreach increments [ x -> if storage > x and storage - second-last > 1000 [
         ask patches [
-          set max-psugar max-psugar + 0.1
+          set max-psugar max-psugar + 0.5
+          set incremented-psugar lput 0.5 incremented-psugar
+          let total-increment sum incremented-psugar
+          set storage storage - total-increment
+          if storage < 0
+            [set storage 0]
           ]
-        set storage storage - (last accumulated) / 2
+        ]
         ]
       ]
     ]
-  ]
-
+    ]
 end
 
 to turtle-reproduce
@@ -331,7 +338,6 @@ to adjust-triggers
   ]
   [set threshold-1 0]
 
-  if any? other turtles at-points vision-points [
     carefully [
     let target [who] of self
     let a count other turtles at-points vision-points with [member? target last expectations]
@@ -342,8 +348,6 @@ to adjust-triggers
     [set threshold-2 0]
   ]
   [set threshold-2 0]
-  ]
-
 end
 
 to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes internalized. If norm is present, add the weight of the norm
@@ -907,9 +911,9 @@ norms?
 -1000
 
 SWITCH
-120
+115
 185
-252
+247
 218
 selfish-norms?
 selfish-norms?
@@ -918,10 +922,10 @@ selfish-norms?
 -1000
 
 SWITCH
-80
-235
-227
-268
+5
+220
+130
+253
 group-behavior
 group-behavior
 1
