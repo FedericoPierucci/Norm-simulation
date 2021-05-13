@@ -13,15 +13,15 @@ turtles-own [
           ;; another could cooperate a few times but could be very altruistic)
   epsilon ;; a dynamic variable ranging from 0 to 1 that express the probabily of giving to the central storage and the altruism of the turtle
   age ;; the age of the turtle
-  threshold-1
-  threshold-2
-  expectations
+  threshold-1 ;; first threshold-value for norm-internalization
+  threshold-2 ;; second threshold-value for norm selection and execution
+  expectations ;; ID list of other agents in sight
   observed-norm-actions
   selected-norm
   group
   wealth-donated
   enforcing
-  norm-sensitivity
+  norm-sensitivity ;; the propension of the agent to internalize/follow a norm
 ]
 
 
@@ -29,7 +29,7 @@ turtles-own [
 patches-own [
   psugar           ;; the amount of sugar on this patch
   max-psugar       ;; the maximum amount of sugar that can be on this patch
-  incremented-psugar
+  incremented-psugar ;; track the sugar-increments of the patch
 ]
 
 globals [
