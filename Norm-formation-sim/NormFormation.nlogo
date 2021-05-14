@@ -17,8 +17,13 @@ turtles-own [
   threshold-2 ;; second threshold-value for norm selection and execution
   expectations ;; ID list of other agents in sight
   observed-norm-actions
+  epsilon-opinion
+  lambda-opinion
   selected-norm
   group
+  theta ;; opinion threshold
+  mu ;; convergence value
+  interaction-memory
   wealth-donated
   enforcing
   cooperating
@@ -39,6 +44,7 @@ globals [
   counter
   payoff-ticks
   increment-values
+
 
 ;;
 ;; Setup Procedures
@@ -84,6 +90,8 @@ to turtle-setup ;; turtle procedure
   [set epsilon random-float-range 0 0.5
      set lambda random-float-range 0 0.5
   ]
+  set epsilon-opinion epsilon + one-of [0.1 -0.1]
+  set lambda-opinion lambda + one-of [0.1 -0.1]
   set norm-sensitivity random-float 1
   set wealth-donated 0
   set selected-norm []
@@ -92,6 +100,9 @@ to turtle-setup ;; turtle procedure
   set group 0
   set enforcing 0
   set cooperating 0
+  set theta theta-value
+  set mu mu-value
+  set interaction-memory []
   run visualization
 end
 
@@ -126,7 +137,7 @@ to go
   ]
 
   if depletion = true [ ;; patches lose sugar every n ticks (the amount lost is controlled by the "deplation-rate" switch)
-    let depletion-time n-values 1000 [n -> n * 50]
+    let depletion-time n-values 1000 [n -> n * 100]
     if member? counter depletion-time [
       ask patches [
         set max-psugar max-psugar - deplation-rate
@@ -145,6 +156,7 @@ to go
     adjust-expectations
     lambda-observations
     epsilon-observations
+    turtle-talk
     build-norm
     if group-behavior = true
     [
@@ -226,40 +238,7 @@ end
 
 
 
-to lambda-observations ;; build norm-actions from observing the enviroment
-  if observation-dynamic = "social-conformers" [
-  if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [wealth-donated > wealth] > count other turtles at-points vision-points with [wealth-donated < wealth]
-       [if not member? "lambda+" observed-norm-actions [
-        set observed-norm-actions lput "lambda+" observed-norm-actions
-      ]
-      ]
-        [if not member? "lambda-" observed-norm-actions [
-        set observed-norm-actions lput "lambda-" observed-norm-actions
-    ]
-    ]
-  ]
-  ]
 
-end
-
-to epsilon-observations ;; build norm-actions from observing enviroment
-  if observation-dynamic = "social-conformers" [
-  if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0] [
-      if not member? "epsilon+" observed-norm-actions [
-        set observed-norm-actions lput "epsilon+" observed-norm-actions
-    ]
-    ]
-    [
-      if not member? "epsilon-" observed-norm-actions [
-        set observed-norm-actions lput "epsilon-" observed-norm-actions
-    ]
-    ]
-  ]
-  ]
-
-end
 
 
 ;;;
@@ -282,8 +261,79 @@ to turtle-eat ;; turtle procedure
   set psugar 0
 end
 
+to turtle-talk ;; Deffuant model of opinion-dynamics and interaction memory mechanism
+  if any? turtles at-points vision-points [
+    let receiver one-of other turtles at-points vision-points
+    let sender self
+    if abs(epsilon-opinion - [epsilon-opinion] of receiver) <= theta [
+      if not member? [who] of receiver interaction-memory [
+        set interaction-memory lput [who] of receiver interaction-memory
+      ]
+      set epsilon-opinion epsilon-opinion + mu * ([epsilon-opinion] of receiver - epsilon-opinion)
+      if epsilon-opinion > 1 [set epsilon-opinion 1]
+      ask receiver [
+        if not member? [who] of sender interaction-memory [
+        set interaction-memory lput [who] of sender interaction-memory
+      ]
+      set epsilon-opinion epsilon-opinion + mu * ([epsilon-opinion] of sender - epsilon-opinion)
+      if epsilon-opinion > 1 [set epsilon-opinion 1]
+        ]
+       ]
+    if abs(lambda-opinion - [lambda-opinion] of receiver) <= theta [
+       if not member? [who] of receiver interaction-memory [
+        set interaction-memory lput [who] of receiver interaction-memory
+      ]
+      set lambda-opinion lambda-opinion + mu * ([lambda-opinion] of receiver - lambda-opinion)
+      if lambda-opinion > 1 [set lambda-opinion 1]
+        ask receiver [
+         if not member? [who] of sender interaction-memory [
+           set interaction-memory lput [who] of sender interaction-memory
+        ]
+          set lambda-opinion lambda-opinion + mu * ([lambda-opinion] of sender - epsilon-opinion)
+          if lambda-opinion < 0 [set lambda-opinion 0]
+        ]
+       ]
+      ]
+end
+
+to lambda-observations ;; build norm-actions from observing the enviroment
+  if observation-dynamic = "social-conformers" [
+  if any? other turtles at-points vision-points[
+    ifelse count other turtles at-points vision-points with [wealth-donated > wealth] > count other turtles at-points vision-points with [wealth-donated < wealth]
+       [if not member? "lambda+" observed-norm-actions [
+        set observed-norm-actions lput "lambda+" observed-norm-actions
+        set lambda-opinion lambda-opinion + 0.01
+      ]
+      ]
+        [if not member? "lambda-" observed-norm-actions [
+        set observed-norm-actions lput "lambda-" observed-norm-actions
+        set lambda-opinion lambda-opinion - 0.01
+    ]
+    ]
+  ]
+  ]
+end
+
+to epsilon-observations ;; build norm-actions from observing enviroment
+  if observation-dynamic = "social-conformers" [
+  if any? other turtles at-points vision-points[
+    ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0] [
+      if not member? "epsilon+" observed-norm-actions [
+        set observed-norm-actions lput "epsilon+" observed-norm-actions
+        set epsilon-opinion epsilon-opinion + 0.01
+    ]
+    ]
+    [
+      if not member? "epsilon-" observed-norm-actions [
+        set observed-norm-actions lput "epsilon-" observed-norm-actions
+        set epsilon-opinion epsilon-opinion - 0.01
+    ]
+    ]
+  ]
+  ]
+end
+
 to turtle-contribute
-  if storage? = true [
   ifelse random-float 1 < epsilon [
     let amount-given wealth * (lambda)
     set wealth wealth - amount-given
@@ -292,32 +342,9 @@ to turtle-contribute
     set cooperating 1
     ]
     [set cooperating 0]
-  ]
+
 end
 
-to update-storage
-  set payoff-ticks n-values 100 [n -> n * 50]
-  if resources-redistribution = true [
-    if member? counter payoff-ticks [
-      set accumulated-storage lput round(storage) accumulated-storage
-      let increments n-values 1000 [n -> n * 1000]
-      if length accumulated-storage > 1 [
-      let second-last last (but-last accumulated-storage)
-       foreach increments [ x -> if storage > x and storage - second-last > 1000 [ ;; if, from the last payoff tick, the storage has grown of more than 1000 units, redistribute resources
-        ask patches [
-          set max-psugar max-psugar + 0.5
-          set incremented-psugar lput 0.5 incremented-psugar
-          let total-increment sum incremented-psugar
-          set storage storage - total-increment
-          if storage < 0
-          [set storage 0]
-          ]
-        ]
-        ]
-      ]
-    ]
-    ]
-end
 
 to turtle-reproduce
   if initial-population * 2 > count turtles [
@@ -343,8 +370,8 @@ end
 
 to adjust-triggers
   carefully [
-    let target last observed-norm-actions
-    let x count other turtles at-points vision-points with [last observed-norm-actions = target]
+    let my-memory interaction-memory
+    let x count other turtles at-points vision-points with [member? who my-memory]
     let y count other turtles at-points vision-points
     ifelse x > 0 [
     set threshold-1 y / x
@@ -389,15 +416,8 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
   let x epsilon
   let p 1 - epsilon
   if random-float 1 < x [
-  let selected+  ["epsilon+""lambda+"]
   let selected key-with-max-value (norms)
-  if not empty? selected-norm [
-  if not member? last selected-norm selected+ and member? selected selected+ ;; if turtle has changed norm-type, reset values
-      [
-       set lambda 0.5
-       set epsilon 0.5
-        ]
-      ]
+
      ;; altruistic norms
   if selected = "epsilon+" [
       set selected-norm lput "epsilon+" selected-norm
@@ -411,22 +431,13 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
     set group 2
     set lambda lambda + 0.1
     if lambda > 1 [set lambda 1]
-  ]
+     ]
     ]
 
 if selfish-norms? = true [
 
 if random-float 1 < p [
   let selected key-with-max-value (norms)
-  let selected- ["epsilon-""lambda-"]
-  if not empty? selected-norm [
-  if not member? last selected-norm selected- and member? selected selected- ;; if turtle has changed norm-type, reset values
-      [
-       set lambda 0.2
-        set epsilon 0.2
-        ]
-      ]
-
   if selected = "epsilon-" [
       set selected-norm lput "epsilon-" selected-norm
       set group -1
@@ -439,9 +450,9 @@ if random-float 1 < p [
     set group -2
     set lambda lambda - 0.1
     if lambda < 0 [set lambda 0]
-  ]
+     ]
     ]
-  ]
+   ]
   ]
 end
 
@@ -456,22 +467,20 @@ to enforce-norm
           if random-float 1 < 0.5 [
           set group conversion
           ]
+         ]
         ]
-      ]
-        ]
+       ]
       ]
  end
 
 
 to adjust-expectations
-
   if any? turtles at-points vision-points [
     if not member? [who] of other turtles at-points vision-points expectations [
       set expectations lput [who] of other turtles at-points vision-points expectations
     ]
   ]
-
- end
+end
 
 to adjust-group-behavior
   if group = one-of [1 2 3] [
@@ -481,7 +490,7 @@ to adjust-group-behavior
 
     set epsilon epsilon + 0.1
      if epsilon > 1 [set epsilon 1]
-  ]
+   ]
   ]
   if group = one-of [-1 -2 -3] [
     if random-float 1 < 0.5 [
@@ -498,12 +507,33 @@ end
 ;;; GENERAL PROCEDURES
 ;;;
 
+to update-storage
+  set payoff-ticks n-values 100 [n -> n * 50]
+  if resources-redistribution = true [
+    if member? counter payoff-ticks [
+      set accumulated-storage lput round(storage) accumulated-storage
+      let increments n-values 1000 [n -> n * 1000]
+      if length accumulated-storage > 1 [
+       let second-last last (but-last accumulated-storage)
+       foreach increments [ x -> if storage > x and storage - second-last >= 1000 [ ;; if, from the last payoff tick, the storage has grown of more than 1000 units, redistribute resources
+        ask patches [
+          set max-psugar max-psugar + 0.5
+          set incremented-psugar lput 0.5 incremented-psugar
+          let total-increment sum incremented-psugar
+          set storage storage - total-increment
+          if storage < 0 [set storage 0]
+          ]
+        ]
+       ]
+      ]
+     ]
+    ]
+end
+
 to patch-recolor ;; patch procedure
   ;; color patches based on the amount of sugar they have
   set pcolor (yellow + 4.9 - psugar)
 end
-
-
 
 to patch-growback ;; patch procedure
   ;; immediately grow back all of the sugar for the patch
@@ -519,9 +549,14 @@ to-report random-in-range [low high]
 end
 
 to-report random-float-range [low high]
-  report low + random-float (high - low - 0.1)
+  report low + random-float (high - low)
 end
 
+to-report key-with-max-value [table]
+   let norm-list table:to-list table; convert to list of key/value pairs
+   report first reduce [[a b] -> ifelse-value (last a > last b) [a][b]]; find pair with max value, report key
+   norm-list
+end
 
 ;;
 ;; Visualization Procedures
@@ -546,11 +581,6 @@ to color-agents-by-cooperation
   [set color red + (epsilon * 5 - 20)]
 end
 
-to-report key-with-max-value [table]
-   let norm-list table:to-list table; convert to list of key/value pairs
-   report first reduce [[a b] -> ifelse-value (last a > last b) [a][b]]; find pair with max value, report key
-   norm-list
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 290
@@ -580,9 +610,9 @@ ticks
 30.0
 
 BUTTON
-10
+5
 55
-90
+85
 95
 NIL
 setup
@@ -756,17 +786,6 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" "plot storage"
 
-SWITCH
-10
-150
-112
-183
-storage?
-storage?
-0
-1
--1000
-
 MONITOR
 0
 275
@@ -896,9 +915,9 @@ PENS
 "lambda-" 1.0 0 -2674135 true "" "carefully [plot count turtles with [group = -2]][]"
 
 SWITCH
-115
+5
 150
-250
+192
 183
 resources-redistribution
 resources-redistribution
@@ -924,7 +943,7 @@ SWITCH
 218
 selfish-norms?
 selfish-norms?
-0
+1
 1
 -1000
 
@@ -958,7 +977,7 @@ deplation-rate
 deplation-rate
 0
 1
-0.5
+1.0
 0.01
 1
 NIL
@@ -974,6 +993,36 @@ depletion
 0
 1
 -1000
+
+SLIDER
+0
+480
+172
+513
+mu-value
+mu-value
+0
+0.5
+0.5
+0.25
+1
+NIL
+HORIZONTAL
+
+SLIDER
+0
+510
+172
+543
+theta-value
+theta-value
+0
+0.5
+0.5
+0.25
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1335,134 +1384,6 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
-<experiments>
-  <experiment name="experiment-no-group" repetitions="1" sequentialRunOrder="false" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="500"/>
-    <metric>round(storage)</metric>
-    <metric>count turtles with [group = one-of [1 2 3]]</metric>
-    <metric>mean datas-mean</metric>
-    <metric>mean datas-max</metric>
-    <metric>mean datas-min</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-cooperators">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="storage?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="experiment-group-noselfish" repetitions="20" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="500"/>
-    <metric>round(storage)</metric>
-    <metric>count turtles with [group = one-of [1 2 3]]</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-cooperators">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="storage?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="experiment-all-active" repetitions="20" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="500"/>
-    <metric>round storage</metric>
-    <metric>count turtles with [group = one-of [1 2 3]]</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-cooperators">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="storage?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="experiment-no-norms" repetitions="20" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="500"/>
-    <metric>round(storage)</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-cooperators">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="storage?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
