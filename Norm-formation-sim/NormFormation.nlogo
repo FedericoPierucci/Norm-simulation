@@ -21,6 +21,7 @@ turtles-own [
   group
   wealth-donated
   enforcing
+  cooperating
   norm-sensitivity ;; the propension of the agent to internalize/follow a norm
 ]
 
@@ -70,7 +71,7 @@ to turtle-setup ;; turtle procedure
     set vision-points sentence vision-points (list (list 0 n) (list n 0) (list 0 (- n)) (list (- n) 0))
   ]
   set norms table:make
-  set cooperation-rate random-float-range initial-cooperators 1
+  set cooperation-rate random-float 1
   ifelse cooperation-rate > 0.5 [
     ifelse random-float 1 < 0.7 [
       set epsilon random-float-range 0.5 1
@@ -90,6 +91,7 @@ to turtle-setup ;; turtle procedure
   set observed-norm-actions []
   set group 0
   set enforcing 0
+  set cooperating 0
   run visualization
 end
 
@@ -123,16 +125,26 @@ to go
     patch-recolor
   ]
 
+  if depletion = true [ ;; patches lose sugar every n ticks (the amount lost is controlled by the "deplation-rate" switch)
+    let depletion-time n-values 1000 [n -> n * 50]
+    if member? counter depletion-time [
+      ask patches [
+        set max-psugar max-psugar - deplation-rate
+        if max-psugar < 0 [set max-psugar 0]
+      ]
+    ]
+  ]
+
   ask turtles [
     set age age + 1
     run visualization
     turtle-eat
     turtle-move
+    act-on-cognitons
     adjust-triggers
     adjust-expectations
     lambda-observations
     epsilon-observations
-    act-on-cognitons
     build-norm
     if group-behavior = true
     [
@@ -174,7 +186,7 @@ to movement-cognitions
     if [psugar] of patch-here < [psugar] of one-of patches at-points vision-points with [not any? turtles-here]
   [
       coglogo:set-cogniton-value "wantsugar" 0.2 + (metabolism / 10)
-      coglogo:set-cogniton-value "wantmove" 0.8
+      coglogo:set-cogniton-value "wantmove" 0.6
   ]
   ]
 end
@@ -196,7 +208,7 @@ to contribution-cognitions
       ]
 
     if epsilon > (0.9)  [ ;; pure altruistic turtles
-      coglogo:set-cogniton-value "wantcontribute" 1.5
+      coglogo:set-cogniton-value "wantcontribute" 1
       coglogo:set-cogniton-value "wantsugar" 0
 ]
 
@@ -213,9 +225,11 @@ to norm-cognitions
 end
 
 
+
 to lambda-observations ;; build norm-actions from observing the enviroment
+  if observation-dynamic = "social-conformers" [
   if any? other turtles at-points vision-points[
-     ifelse count other turtles at-points vision-points with [lambda > 0.5] > count other turtles at-points vision-points with [lambda < 0.5]
+    ifelse count other turtles at-points vision-points with [wealth-donated > wealth] > count other turtles at-points vision-points with [wealth-donated < wealth]
        [if not member? "lambda+" observed-norm-actions [
         set observed-norm-actions lput "lambda+" observed-norm-actions
       ]
@@ -225,12 +239,14 @@ to lambda-observations ;; build norm-actions from observing the enviroment
     ]
     ]
   ]
+  ]
 
 end
 
 to epsilon-observations ;; build norm-actions from observing enviroment
+  if observation-dynamic = "social-conformers" [
   if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [epsilon > 0.5] > count other turtles at-points vision-points with [epsilon < 0.5] [
+    ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0] [
       if not member? "epsilon+" observed-norm-actions [
         set observed-norm-actions lput "epsilon+" observed-norm-actions
     ]
@@ -240,7 +256,7 @@ to epsilon-observations ;; build norm-actions from observing enviroment
         set observed-norm-actions lput "epsilon-" observed-norm-actions
     ]
     ]
-
+  ]
   ]
 
 end
@@ -268,34 +284,33 @@ end
 
 to turtle-contribute
   if storage? = true [
-  if random-float 1 < epsilon [
+  ifelse random-float 1 < epsilon [
     let amount-given wealth * (lambda)
+    set wealth wealth - amount-given
     set wealth-donated wealth-donated + amount-given
     set storage storage + amount-given
-    set wealth wealth - amount-given
+    set cooperating 1
     ]
+    [set cooperating 0]
   ]
 end
 
 to update-storage
-  let a []
-  set a n-values 1001 [50]
-  let b n-values 1001 [n -> n]
-  (foreach a b [[x y] -> set payoff-ticks fput (x * y) payoff-ticks])
+  set payoff-ticks n-values 100 [n -> n * 50]
   if resources-redistribution = true [
     if member? counter payoff-ticks [
       set accumulated-storage lput round(storage) accumulated-storage
       let increments n-values 1000 [n -> n * 1000]
       if length accumulated-storage > 1 [
       let second-last last (but-last accumulated-storage)
-       foreach increments [ x -> if storage > x and storage - second-last > 1000 [
+       foreach increments [ x -> if storage > x and storage - second-last > 1000 [ ;; if, from the last payoff tick, the storage has grown of more than 1000 units, redistribute resources
         ask patches [
           set max-psugar max-psugar + 0.5
           set incremented-psugar lput 0.5 incremented-psugar
           let total-increment sum incremented-psugar
           set storage storage - total-increment
           if storage < 0
-            [set storage 0]
+          [set storage 0]
           ]
         ]
         ]
@@ -338,20 +353,20 @@ to adjust-triggers
   ]
   [set threshold-1 0]
 
-    carefully [
-    let target [who] of self
+  carefully [
+    let target who
     let a count other turtles at-points vision-points with [member? target last expectations]
     let b count other turtles at-points vision-points
   ifelse a > 0 [
     set threshold-2 b / a
   ]
-    [set threshold-2 0]
+  [set threshold-2 0]
   ]
   [set threshold-2 0]
 end
 
 to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes internalized. If norm is present, add the weight of the norm
-  if threshold-1 > 1 - norm-sensitivity [
+  if threshold-1 > 2 - norm-sensitivity [
     if not empty? observed-norm-actions [
       let internalized last observed-norm-actions
       ifelse not table:has-key? norms internalized
@@ -362,7 +377,7 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
   ]
 
   if norms? = true [
-  if threshold-2 > 1 - norm-sensitivity [
+  if threshold-2 > 2 - norm-sensitivity [
     select-norm
   ]
   ]
@@ -398,7 +413,8 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
     if lambda > 1 [set lambda 1]
   ]
     ]
-    if selfish-norms? = true [
+
+if selfish-norms? = true [
 
 if random-float 1 < p [
   let selected key-with-max-value (norms)
@@ -416,8 +432,8 @@ if random-float 1 < p [
       set group -1
       set epsilon epsilon - 0.1
       if epsilon < 0 [ set epsilon 0]
+        ]
 
-  ]
   if selected = "lambda-" [
     set selected-norm lput "lambda-" selected-norm
     set group -2
@@ -439,7 +455,6 @@ to enforce-norm
     ask one-of other turtles at-points vision-points [
           if random-float 1 < 0.5 [
           set group conversion
-
           ]
         ]
       ]
@@ -451,19 +466,11 @@ to enforce-norm
 to adjust-expectations
 
   if any? turtles at-points vision-points [
-    ifelse empty? selected-norm [
     if not member? [who] of other turtles at-points vision-points expectations [
       set expectations lput [who] of other turtles at-points vision-points expectations
     ]
   ]
-    [if not member? [who] of other turtles at-points vision-points expectations [
-      carefully [
-      set expectations lput [who] of other turtles at-points vision-points with [last selected-norm = last [selected-norm] of self] expectations
-    ]
-      []
-      ]
-  ]
-  ]
+
  end
 
 to adjust-group-behavior
@@ -677,7 +684,7 @@ SLIDER
 initial-population
 initial-population
 10
-1000
+500
 100.0
 10
 1
@@ -805,10 +812,10 @@ count turtles with [ epsilon > 0.1 and epsilon < 0.5]
 11
 
 BUTTON
-45
-430
-197
-463
+0
+445
+152
+478
 edit-cognitive-scheme
 coglogo:openeditor
 NIL
@@ -917,35 +924,56 @@ SWITCH
 218
 selfish-norms?
 selfish-norms?
-1
+0
 1
 -1000
 
 SWITCH
-5
-220
-130
-253
+0
+225
+115
+258
 group-behavior
 group-behavior
 1
 1
 -1000
 
+CHOOSER
+120
+220
+262
+265
+observation-dynamic
+observation-dynamic
+"social-conformers"
+0
+
 SLIDER
-40
-385
-212
-418
-initial-cooperators
-initial-cooperators
--0.5
+0
+410
+182
+443
+deplation-rate
+deplation-rate
+0
+1
 0.5
--0.1
-0.1
+0.01
 1
 NIL
 HORIZONTAL
+
+SWITCH
+0
+375
+102
+408
+depletion
+depletion
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
