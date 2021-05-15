@@ -157,6 +157,7 @@ to go
     lambda-observations
     epsilon-observations
     turtle-talk
+    adjust-behavior
     build-norm
     if group-behavior = true
     [
@@ -236,11 +237,6 @@ to norm-cognitions
   ]
 end
 
-
-
-
-
-
 ;;;
 ;;; TURTLE PROCEDURES
 ;;;
@@ -297,40 +293,51 @@ to turtle-talk ;; Deffuant model of opinion-dynamics and interaction memory mech
 end
 
 to lambda-observations ;; build norm-actions from observing the enviroment
-  if observation-dynamic = "social-conformers" [
   if any? other turtles at-points vision-points[
     ifelse count other turtles at-points vision-points with [wealth-donated > wealth] > count other turtles at-points vision-points with [wealth-donated < wealth]
        [if not member? "lambda+" observed-norm-actions [
         set observed-norm-actions lput "lambda+" observed-norm-actions
         set lambda-opinion lambda-opinion + 0.01
+          if lambda-opinion > 1 [set lambda-opinion 1]
       ]
       ]
         [if not member? "lambda-" observed-norm-actions [
         set observed-norm-actions lput "lambda-" observed-norm-actions
         set lambda-opinion lambda-opinion - 0.01
+      if lambda-opinion < 0 [set lambda-opinion 0]
     ]
     ]
-  ]
   ]
 end
 
 to epsilon-observations ;; build norm-actions from observing enviroment
-  if observation-dynamic = "social-conformers" [
   if any? other turtles at-points vision-points[
     ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0] [
       if not member? "epsilon+" observed-norm-actions [
         set observed-norm-actions lput "epsilon+" observed-norm-actions
         set epsilon-opinion epsilon-opinion + 0.01
+        if epsilon-opinion > 1 [set epsilon-opinion 1]
     ]
     ]
     [
       if not member? "epsilon-" observed-norm-actions [
         set observed-norm-actions lput "epsilon-" observed-norm-actions
         set epsilon-opinion epsilon-opinion - 0.01
+         if epsilon-opinion < 0 [set epsilon-opinion 0]
     ]
     ]
   ]
-  ]
+end
+
+to adjust-behavior
+  if epsilon-opinion > epsilon [set epsilon epsilon - 0.01]
+  if epsilon > 1 [set epsilon 1]
+  if epsilon-opinion < epsilon [set epsilon epsilon - 0.01]
+  if epsilon < 0 [set epsilon 0]
+  if lambda-opinion > lambda [set lambda lambda - 0.01]
+  if lambda > 1 [set lambda 1]
+  if lambda-opinion < lambda [set lambda lambda - 0.01]
+  if lambda < 0 [set lambda 0]
 end
 
 to turtle-contribute
@@ -404,9 +411,11 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
   ]
 
   if norms? = true [
-  if threshold-2 > 2 - norm-sensitivity [
-    select-norm
-  ]
+   if threshold-2 > 2 - norm-sensitivity [
+    if norm-dynamic = "social-conformers" [
+     select-norm
+    ]
+   ]
   ]
 end
 
@@ -580,7 +589,6 @@ to color-agents-by-cooperation
   ]
   [set color red + (epsilon * 5 - 20)]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 290
@@ -963,8 +971,8 @@ CHOOSER
 220
 262
 265
-observation-dynamic
-observation-dynamic
+norm-dynamic
+norm-dynamic
 "social-conformers"
 0
 
