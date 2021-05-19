@@ -157,7 +157,7 @@ to go
     lambda-observations
     epsilon-observations
     turtle-talk
-    adjust-behavior
+    ;;adjust-behavior
     build-norm
     if group-behavior = true
     [
