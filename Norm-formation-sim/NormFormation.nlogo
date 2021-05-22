@@ -17,8 +17,6 @@ turtles-own [
   threshold-2 ;; second threshold-value for norm selection and execution
   expectations ;; ID list of other agents in sight
   observed-norm-actions
-  epsilon-opinion
-  lambda-opinion
   selected-norm
   group
   theta ;; opinion threshold
@@ -28,6 +26,7 @@ turtles-own [
   enforcing
   cooperating
   norm-sensitivity ;; the propension of the agent to internalize/follow a norm
+  normative-belief
 ]
 
 
@@ -44,6 +43,7 @@ globals [
   counter
   payoff-ticks
   increment-values
+  deontics
 
 
 ;;
@@ -58,6 +58,7 @@ to setup
   set payoff-ticks []
   set increment-values []
   set accumulated-storage []
+  set deontics ["mandatory"]
   reset-ticks
 end
 
@@ -90,8 +91,6 @@ to turtle-setup ;; turtle procedure
   [set epsilon random-float-range 0 0.5
      set lambda random-float-range 0 0.5
   ]
-  set epsilon-opinion epsilon + one-of [0.1 -0.1]
-  set lambda-opinion lambda + one-of [0.1 -0.1]
   set norm-sensitivity random-float 1
   set wealth-donated 0
   set selected-norm []
@@ -103,6 +102,7 @@ to turtle-setup ;; turtle procedure
   set theta theta-value
   set mu mu-value
   set interaction-memory []
+  set normative-belief []
   run visualization
 end
 
@@ -157,14 +157,14 @@ to go
     lambda-observations
     epsilon-observations
     turtle-talk
-    ;;adjust-behavior
+    adjust-behavior
     build-norm
     if group-behavior = true
     [
+    group-cognitions
     enforce-norm
-    norm-cognitions
-    adjust-group-behavior
     ]
+    adjust-group-behavior
     run coglogo:choose-next-plan
     coglogo:report-agent-data
     turtle-reproduce
@@ -182,7 +182,7 @@ end
 to act-on-cognitons
    movement-cognitions
    contribution-cognitions
-   norm-cognitions
+   group-cognitions
 end
 
 
@@ -207,27 +207,25 @@ end
 to contribution-cognitions
     if epsilon  < (0.1) [ ;; pure selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
-      coglogo:set-cogniton-value "wantsugar" 1
     ]
 
     if epsilon < (0.5) and epsilon > (0.1) [ ;; selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
-      coglogo:set-cogniton-value "wantsugar" 0.5 + epsilon
       ]
 
     if epsilon > (0.5) and epsilon < (0.9) [ ;; altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1
-      coglogo:set-cogniton-value "wantsugar" 1 - epsilon
+
       ]
 
     if epsilon > (0.9)  [ ;; pure altruistic turtles
-      coglogo:set-cogniton-value "wantcontribute" 1
-      coglogo:set-cogniton-value "wantsugar" 0
+      coglogo:set-cogniton-value "wantcontribute" 1.5
+
 ]
 
 end
 
-to norm-cognitions
+to group-cognitions
   if wealth > 50 and group != 0 [
     ifelse enforcing = 0 [
     coglogo:set-cogniton-value "enforce-norm" 2
@@ -261,82 +259,58 @@ to turtle-talk ;; Deffuant model of opinion-dynamics and interaction memory mech
   if any? turtles at-points vision-points [
     let receiver one-of other turtles at-points vision-points
     let sender self
-    if abs(epsilon-opinion - [epsilon-opinion] of receiver) <= theta [
+    if abs(epsilon - [epsilon] of receiver) <= theta [
       if not member? [who] of receiver interaction-memory [
         set interaction-memory lput [who] of receiver interaction-memory
       ]
-      set epsilon-opinion epsilon-opinion + mu * ([epsilon-opinion] of receiver - epsilon-opinion)
-      if epsilon-opinion > 1 [set epsilon-opinion 1]
+      set epsilon epsilon + mu * ([epsilon] of receiver - epsilon)
+      if epsilon > 1 [set epsilon 1]
       ask receiver [
         if not member? [who] of sender interaction-memory [
         set interaction-memory lput [who] of sender interaction-memory
       ]
-      set epsilon-opinion epsilon-opinion + mu * ([epsilon-opinion] of sender - epsilon-opinion)
-      if epsilon-opinion > 1 [set epsilon-opinion 1]
+      set epsilon epsilon + mu * ([epsilon] of sender - epsilon)
+      if epsilon > 1 [set epsilon 1]
         ]
-       ]
-    if abs(lambda-opinion - [lambda-opinion] of receiver) <= theta [
-       if not member? [who] of receiver interaction-memory [
-        set interaction-memory lput [who] of receiver interaction-memory
-      ]
-      set lambda-opinion lambda-opinion + mu * ([lambda-opinion] of receiver - lambda-opinion)
-      if lambda-opinion > 1 [set lambda-opinion 1]
-        ask receiver [
-         if not member? [who] of sender interaction-memory [
-           set interaction-memory lput [who] of sender interaction-memory
-        ]
-          set lambda-opinion lambda-opinion + mu * ([lambda-opinion] of sender - epsilon-opinion)
-          if lambda-opinion < 0 [set lambda-opinion 0]
-        ]
-       ]
-      ]
+    ]
+  ]
 end
 
 to lambda-observations ;; build norm-actions from observing the enviroment
   if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [wealth-donated > wealth] > count other turtles at-points vision-points with [wealth-donated < wealth]
-       [if not member? "lambda+" observed-norm-actions [
+    ifelse count other turtles at-points vision-points with [wealth-donated > 1 / 10 * wealth] > count other turtles at-points vision-points with [wealth-donated < 1 / 10 * wealth] [
+
         set observed-norm-actions lput "lambda+" observed-norm-actions
-        set lambda-opinion lambda-opinion + 0.01
-          if lambda-opinion > 1 [set lambda-opinion 1]
       ]
-      ]
-        [if not member? "lambda-" observed-norm-actions [
+       [ if selfish-norms? = true [
         set observed-norm-actions lput "lambda-" observed-norm-actions
-        set lambda-opinion lambda-opinion - 0.01
-      if lambda-opinion < 0 [set lambda-opinion 0]
+      ]
+
     ]
     ]
-  ]
+
+
 end
 
 to epsilon-observations ;; build norm-actions from observing enviroment
   if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0] [
-      if not member? "epsilon+" observed-norm-actions [
+    ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0]
+      [
         set observed-norm-actions lput "epsilon+" observed-norm-actions
-        set epsilon-opinion epsilon-opinion + 0.01
-        if epsilon-opinion > 1 [set epsilon-opinion 1]
     ]
-    ]
-    [
-      if not member? "epsilon-" observed-norm-actions [
+    [if selfish-norms? = true  [
         set observed-norm-actions lput "epsilon-" observed-norm-actions
-        set epsilon-opinion epsilon-opinion - 0.01
-         if epsilon-opinion < 0 [set epsilon-opinion 0]
-    ]
+      ]
+
     ]
   ]
+
 end
 
 to adjust-behavior
-  if epsilon-opinion > epsilon [set epsilon epsilon - 0.01]
   if epsilon > 1 [set epsilon 1]
-  if epsilon-opinion < epsilon [set epsilon epsilon - 0.01]
   if epsilon < 0 [set epsilon 0]
-  if lambda-opinion > lambda [set lambda lambda - 0.01]
   if lambda > 1 [set lambda 1]
-  if lambda-opinion < lambda [set lambda lambda - 0.01]
   if lambda < 0 [set lambda 0]
 end
 
@@ -354,9 +328,9 @@ end
 
 
 to turtle-reproduce
-  if initial-population * 2 > count turtles [
+  if initial-population * 4 > count turtles [
   if wealth > 100 and age > 45 [
-    set wealth wealth - 100
+    set wealth wealth - 50
     let target-1 [lambda] of self
     let target-2 [epsilon] of self
     hatch 1 [
@@ -407,7 +381,8 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
         [table:put norms internalized 0.1]
         [let i table:get-or-default norms internalized 0
         table:put norms internalized i + 0.1 ]
-      ]
+        build-normative-belief
+  ]
   ]
 
   if norms? = true [
@@ -415,7 +390,10 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
     if norm-dynamic = "social-conformers" [
      select-norm
     ]
+    if norm-dynamic = "internalizers" [
+      create-normative-goal
    ]
+  ]
   ]
 end
 
@@ -432,15 +410,13 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
       set selected-norm lput "epsilon+" selected-norm
       set group 1
       set epsilon epsilon + 0.1
-      if epsilon > 1 [ set epsilon 1]
 
   ]
   if selected = "lambda+" [
     set selected-norm lput "lambda+" selected-norm
     set group 2
     set lambda lambda + 0.1
-    if lambda > 1 [set lambda 1]
-     ]
+    ]
     ]
 
 if selfish-norms? = true [
@@ -451,20 +427,48 @@ if random-float 1 < p [
       set selected-norm lput "epsilon-" selected-norm
       set group -1
       set epsilon epsilon - 0.1
-      if epsilon < 0 [ set epsilon 0]
         ]
 
   if selected = "lambda-" [
     set selected-norm lput "lambda-" selected-norm
     set group -2
     set lambda lambda - 0.1
-    if lambda < 0 [set lambda 0]
      ]
     ]
    ]
   ]
 end
 
+to build-normative-belief
+  let norm-list table:to-list norms
+  if not empty? norm-list [
+    let selected key-with-max-value norms
+    let belief-first word selected " is "
+    let full-belief word belief-first one-of deontics
+    if not member? full-belief normative-belief [
+      set normative-belief lput full-belief normative-belief
+    ]
+  ]
+end
+
+to create-normative-goal
+  if not empty? normative-belief [
+    coglogo:activate-cogniton "normative-goal"
+    if member? one-of ["epsilon+" "lambda+"] last normative-belief [
+      coglogo:set-cogniton-value "normative-goal" 1
+
+      if member? "epsilon+" last normative-belief
+      [set epsilon 1
+       set group 1
+      ]
+
+      if member? "lambda+" last normative-belief [
+        set lambda 1
+        set group 2
+  ]
+    ]
+  ]
+end
 
 to enforce-norm
   if any? other turtles at-points vision-points [
@@ -472,14 +476,18 @@ to enforce-norm
       let x count turtles with [group = [group] of self]
       let conversion [group] of self
   if x > count other turtles at-points vision-points [
-    ask one-of other turtles at-points vision-points [
-          if random-float 1 < 0.5 [
-          set group conversion
+     let target one-of other turtles at-points vision-points
+        if member? [who] of target interaction-memory  and [group] of target != group [
+          set wealth wealth - 10
+          if norm-dynamic = "internalizers" [
+            set wealth wealth - 10
+            ;; tell-expectation
+          ]
           ]
          ]
         ]
        ]
-      ]
+
  end
 
 
@@ -491,24 +499,51 @@ to adjust-expectations
   ]
 end
 
+to tell-expectation
+  if any? turtles at-points vision-points [
+    foreach last expectations [receiver ->
+      let sender myself
+      let test 0
+      ifelse abs([epsilon] of receiver - epsilon) <= theta and abs([lambda] of receiver - lambda)  <= theta
+       [set test 1]
+       [set test 0]
+       ask receiver [
+        if test = 1 [
+          set normative-belief lput [last normative-belief] of sender normative-belief
+          ]
+      ]
+    ]
+    ]
+end
+
+
 to adjust-group-behavior
-  if group = one-of [1 2 3] [
+  if norm-dynamic = "social-conformers" [
+  if group = one-of [1 2] and last selected-norm = "epsilon+" [
   if random-float 1 < 0.5 [
     set lambda lambda + 0.1
-     if lambda > 1 [set lambda 1]
-
-    set epsilon epsilon + 0.1
-     if epsilon > 1 [set epsilon 1]
-   ]
+    ]
   ]
-  if group = one-of [-1 -2 -3] [
+  if group = one-of [1 2] and last selected-norm = "lambda+"   [
     if random-float 1 < 0.5 [
-     set lambda lambda - 0.1
-    if lambda < 0 [set lambda 0]
-    set epsilon epsilon - 0.1
-    if epsilon < 0 [ set epsilon 0]
-  ]
+     set epsilon epsilon + 0.1
 ]
+  ]
+  ]
+
+  if norm-dynamic = "internalizers" [
+  if group = one-of [1 2] and member? "epsilon+" last normative-belief [
+  if random-float 1 < 0.5 [
+    set lambda lambda + 0.1
+    ]
+  ]
+  if group = one-of [1 2] and member?  "lambda+" last normative-belief   [
+    if random-float 1 < 0.5 [
+     set epsilon epsilon + 0.1
+    ]
+]
+  ]
+
 end
 
 
@@ -619,9 +654,9 @@ ticks
 
 BUTTON
 5
-55
+50
 85
-95
+90
 NIL
 setup
 NIL
@@ -723,7 +758,7 @@ initial-population
 initial-population
 10
 500
-100.0
+60.0
 10
 1
 NIL
@@ -962,7 +997,7 @@ SWITCH
 258
 group-behavior
 group-behavior
-1
+0
 1
 -1000
 
@@ -973,8 +1008,8 @@ CHOOSER
 265
 norm-dynamic
 norm-dynamic
-"social-conformers"
-0
+"social-conformers" "internalizers"
+1
 
 SLIDER
 0
@@ -985,7 +1020,7 @@ deplation-rate
 deplation-rate
 0
 1
-1.0
+0.44
 0.01
 1
 NIL
