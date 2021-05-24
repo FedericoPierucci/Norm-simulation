@@ -154,12 +154,12 @@ to go
     act-on-cognitons
     adjust-triggers
     adjust-expectations
-    lambda-observations
     epsilon-observations
+    build-norm
+    lambda-observations
     turtle-talk
     adjust-behavior
-    build-norm
-    if group-behavior = true
+   if group-behavior = true
     [
     group-cognitions
     enforce-norm
@@ -278,7 +278,7 @@ end
 
 to lambda-observations ;; build norm-actions from observing the enviroment
   if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [wealth-donated > 1 / 10 * wealth] > count other turtles at-points vision-points with [wealth-donated < 1 / 10 * wealth] [
+    ifelse count other turtles at-points vision-points with [wealth-donated != 0] > count other turtles at-points vision-points with [wealth-donated = 0] [
 
         set observed-norm-actions lput "lambda+" observed-norm-actions
       ]
@@ -455,8 +455,7 @@ to create-normative-goal
   if not empty? normative-belief [
     coglogo:activate-cogniton "normative-goal"
     if member? one-of ["epsilon+" "lambda+"] last normative-belief [
-      coglogo:set-cogniton-value "normative-goal" 1
-
+      coglogo:set-cogniton-value "normative-goal" 2
       if member? "epsilon+" last normative-belief
       [set epsilon 1
        set group 1
@@ -476,19 +475,24 @@ to enforce-norm
       let x count turtles with [group = [group] of self]
       let conversion [group] of self
   if x > count other turtles at-points vision-points [
-     let target one-of other turtles at-points vision-points
-        if member? [who] of target interaction-memory  and [group] of target != group [
-          set wealth wealth - 10
-          if norm-dynamic = "internalizers" [
-            set wealth wealth - 10
-            ;; tell-expectation
+     if not empty? normative-belief [
+     let receiver one-of other turtles at-points vision-points
+      let sender self
+      let test 0
+      set wealth wealth - 10
+      ifelse abs([epsilon] of receiver - epsilon) <= theta and abs([lambda] of receiver - lambda)  <= theta
+       [set test 1]
+       [set test 0]
+       ask receiver [
+        if test = 1 [
+          set normative-belief lput [last normative-belief] of sender normative-belief
           ]
-          ]
-         ]
         ]
-       ]
-
- end
+      ]
+      ]
+    ]
+  ]
+end
 
 
 to adjust-expectations
@@ -1009,7 +1013,7 @@ CHOOSER
 norm-dynamic
 norm-dynamic
 "social-conformers" "internalizers"
-1
+0
 
 SLIDER
 0
