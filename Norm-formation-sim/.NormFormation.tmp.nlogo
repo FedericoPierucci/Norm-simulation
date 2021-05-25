@@ -155,9 +155,10 @@ to go
     adjust-triggers
     adjust-expectations
     lambda-observations
-    epsilon-observations
     build-norm
-    turtle-talk
+    epsilon-observations
+
+turtle-talk
     adjust-behavior
    if group-behavior = true
     [
@@ -1013,7 +1014,7 @@ CHOOSER
 norm-dynamic
 norm-dynamic
 "social-conformers" "internalizers"
-1
+0
 
 SLIDER
 0
@@ -1050,7 +1051,7 @@ mu-value
 mu-value
 0
 0.5
-0.25
+0.5
 0.25
 1
 NIL
@@ -1065,7 +1066,7 @@ theta-value
 theta-value
 0
 0.5
-0.25
+0.5
 0.25
 1
 NIL

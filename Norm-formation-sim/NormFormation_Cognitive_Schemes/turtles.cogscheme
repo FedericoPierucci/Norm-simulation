@@ -47,6 +47,16 @@ enforce-norm=1.0
 DEPENDENCY
 enforce-norm
 REINFORCEMENT
+COG
+normative-goal
+-8355712
+false
+0.0
+INFLUENCE
+turtle-contribute=2.0
+DEPENDENCY
+turtle-contribute
+REINFORCEMENT
 GRP
 Cooperators
 ROL
