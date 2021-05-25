@@ -33,7 +33,7 @@ wantcontribute
 true
 0.0
 INFLUENCE
-turtle-contribute=1.1
+turtle-contribute=1.0
 DEPENDENCY
 turtle-contribute
 REINFORCEMENT

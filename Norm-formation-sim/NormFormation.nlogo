@@ -44,6 +44,8 @@ globals [
   payoff-ticks
   increment-values
   deontics
+  mean-epsilon
+  mean-lambda
 
 
 ;;
@@ -59,6 +61,8 @@ to setup
   set increment-values []
   set accumulated-storage []
   set deontics ["mandatory"]
+  set mean-epsilon []
+  set mean-lambda []
   reset-ticks
 end
 
@@ -172,7 +176,9 @@ to go
     if age >= 100 [die]
    ]
 
-   tick
+    set mean-epsilon lput mean [epsilon] of turtles mean-epsilon
+    set mean-lambda lput mean [lambda] of turtles mean-lambda
+    tick
 end
 
 ;;;
@@ -737,7 +743,7 @@ initial-population
 initial-population
 10
 500
-60.0
+100.0
 10
 1
 NIL
@@ -936,7 +942,7 @@ SWITCH
 218
 norms?
 norms?
-0
+1
 1
 -1000
 
@@ -994,7 +1000,7 @@ SWITCH
 408
 depletion
 depletion
-1
+0
 1
 -1000
 
@@ -1388,6 +1394,92 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="500"/>
+    <metric>storage</metric>
+    <metric>mean mean-epsilon</metric>
+    <metric>mean mean-lambda</metric>
+    <metric>count turtles with [group = 1]</metric>
+    <enumeratedValueSet variable="group-behavior">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="selfish-norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="norms?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="depletion">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mu-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="norm-dynamic">
+      <value value="&quot;social-conformers&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="deplation-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="visualization">
+      <value value="&quot;color-agents-by-cooperation&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-no-norms" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="500"/>
+    <metric>storage</metric>
+    <metric>mean mean-epsilon</metric>
+    <metric>mean mean-lambda</metric>
+    <metric>count turtles with [group = 1]</metric>
+    <enumeratedValueSet variable="group-behavior">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="selfish-norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="depletion">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mu-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="norm-dynamic">
+      <value value="&quot;social-conformers&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="deplation-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="visualization">
+      <value value="&quot;color-agents-by-cooperation&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
