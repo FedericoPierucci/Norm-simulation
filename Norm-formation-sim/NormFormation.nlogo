@@ -157,14 +157,14 @@ to go
     lambda-observations
     epsilon-observations
     build-norm
-    turtle-talk
-    adjust-behavior
-   if group-behavior = true
+    if group-behavior = true
     [
+    turtle-talk
     group-cognitions
     enforce-norm
-    ]
     adjust-group-behavior
+    ]
+   adjust-behavior
     run coglogo:choose-next-plan
     coglogo:report-agent-data
     turtle-reproduce
@@ -207,19 +207,23 @@ end
 to contribution-cognitions
     if epsilon  < (0.1) [ ;; pure selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
+     coglogo:set-cogniton-value "wantsugar" 1
     ]
 
     if epsilon < (0.5) and epsilon > (0.1) [ ;; selfish turtles
       coglogo:set-cogniton-value "wantcontribute" 0
+    coglogo:set-cogniton-value "wantsugar" 0.5 + epsilon
       ]
 
     if epsilon > (0.5) and epsilon < (0.9) [ ;; altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1
+     coglogo:set-cogniton-value "wantsugar" 1 - epsilon
 
       ]
 
     if epsilon > (0.9)  [ ;; pure altruistic turtles
       coglogo:set-cogniton-value "wantcontribute" 1.5
+    coglogo:set-cogniton-value "wantsugar" 0
 
 ]
 
@@ -232,6 +236,9 @@ to group-cognitions
     set enforcing 1
   ]
     [coglogo:set-cogniton-value "enforce-norm" 0]
+  ]
+  if enforcing = 1 [
+    coglogo:set-cogniton-value "enforce-norm" 0
   ]
 end
 
@@ -315,6 +322,7 @@ to adjust-behavior
 end
 
 to turtle-contribute
+  if wealth > 50 [
   ifelse random-float 1 < epsilon [
     let amount-given wealth * (lambda)
     set wealth wealth - amount-given
@@ -323,7 +331,7 @@ to turtle-contribute
     set cooperating 1
     ]
     [set cooperating 0]
-
+  ]
 end
 
 
@@ -389,10 +397,7 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
    if threshold-2 > 2 - norm-sensitivity [
     if norm-dynamic = "social-conformers" [
      select-norm
-    ]
-    if norm-dynamic = "internalizers" [
-      create-normative-goal
-   ]
+      ]
   ]
   ]
 end
@@ -418,8 +423,8 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
     set selected-norm lput "lambda+" selected-norm
     set group 2
     set lambda lambda + 0.1
-        coglogo:activate-cogniton "normative-goal"
-      coglogo:set-cogniton-value "normative-goal" 3
+    coglogo:activate-cogniton "normative-goal"
+    coglogo:set-cogniton-value "normative-goal" 3
     ]
     ]
 
@@ -455,46 +460,30 @@ to build-normative-belief
   ]
 end
 
-to create-normative-goal
-  if not empty? normative-belief [
-    coglogo:activate-cogniton "normative-goal"
-    if member? one-of ["epsilon+" "lambda+"] last normative-belief [
-      coglogo:set-cogniton-value "normative-goal" 2
-      if member? "epsilon+" last normative-belief
-      [set epsilon 1
-       set group 1
-      ]
-
-      if member? "lambda+" last normative-belief [
-        set lambda 1
-        set group 2
-  ]
-    ]
-  ]
-end
-
 to enforce-norm
   if any? other turtles at-points vision-points [
     if group != 0 [
       let x count turtles with [group = [group] of self]
       let conversion [group] of self
-  if x > count other turtles at-points vision-points [
-     if not empty? normative-belief [
-     let receiver one-of other turtles at-points vision-points
-      let sender self
-      let test 0
-      set wealth wealth - 10
-      ifelse abs([epsilon] of receiver - epsilon) <= theta and abs([lambda] of receiver - lambda)  <= theta
-       [set test 1]
-       [set test 0]
-       ask receiver [
-        if test = 1 [
-          set normative-belief lput [last normative-belief] of sender normative-belief
+       if x > count other turtles at-points vision-points [
+        if not empty? normative-belief [
+          if any? other turtles at-points vision-points with [group != conversion] [
+            let receiver one-of other turtles at-points vision-points with [group != conversion]
+            let sender self
+            let test 0
+            set wealth wealth - 10
+            ifelse abs([epsilon] of receiver - epsilon) <= theta
+             [set test 1]
+             [set test 0]
+             ask receiver [
+               if test = 1 [
+                set normative-belief lput [last normative-belief] of sender normative-belief
+                ]
+               ]
+             ]
           ]
         ]
-      ]
-      ]
-    ]
+     ]
   ]
 end
 
@@ -517,7 +506,8 @@ to tell-expectation
        [set test 0]
        ask receiver [
         if test = 1 [
-          set normative-belief lput [last normative-belief] of sender normative-belief
+          let enforcers (list([who] of sender))
+          print enforcers
           ]
       ]
     ]
@@ -527,31 +517,12 @@ end
 
 to adjust-group-behavior
   if norm-dynamic = "social-conformers" [
-  if group = one-of [1 2] and last selected-norm = "epsilon+" [
-  if random-float 1 < 0.5 [
-    set lambda lambda + 0.1
-    ]
-  ]
   if group = one-of [1 2] and last selected-norm = "lambda+"   [
     if random-float 1 < 0.5 [
      set epsilon epsilon + 0.1
-]
-  ]
-  ]
-
-  if norm-dynamic = "internalizers" [
-  if group = one-of [1 2] and member? "epsilon+" last normative-belief [
-  if random-float 1 < 0.5 [
-    set lambda lambda + 0.1
+    ]
     ]
   ]
-  if group = one-of [1 2] and member?  "lambda+" last normative-belief   [
-    if random-float 1 < 0.5 [
-     set epsilon epsilon + 0.1
-    ]
-]
-  ]
-
 end
 
 
@@ -822,7 +793,7 @@ count turtles
 PLOT
 725
 335
-940
+1170
 485
 storage
 NIL
@@ -910,24 +881,6 @@ round(storage)
 11
 
 PLOT
-950
-335
-1185
-485
-norm-distribution
-NIL
-NIL
-0.0
-2.0
-0.0
--2.0
-true
-true
-"" ""
-PENS
-" cooperative-norms" 1.0 0 -14070903 true "" "carefully [\nplot count turtles with [ one-of [1 2 3] = group]\n]\n[]\n"
-
-PLOT
 290
 420
 490
@@ -1005,7 +958,7 @@ SWITCH
 258
 group-behavior
 group-behavior
-1
+0
 1
 -1000
 
@@ -1041,7 +994,7 @@ SWITCH
 408
 depletion
 depletion
-0
+1
 1
 -1000
 
@@ -1054,7 +1007,7 @@ mu-value
 mu-value
 0
 0.5
-0.25
+0.5
 0.25
 1
 NIL
@@ -1069,7 +1022,7 @@ theta-value
 theta-value
 0
 0.5
-0.25
+0.5
 0.25
 1
 NIL
