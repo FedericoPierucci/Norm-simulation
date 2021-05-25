@@ -155,10 +155,9 @@ to go
     adjust-triggers
     adjust-expectations
     lambda-observations
-    build-norm
     epsilon-observations
-
-turtle-talk
+    build-norm
+    turtle-talk
     adjust-behavior
    if group-behavior = true
     [
@@ -411,12 +410,16 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
       set selected-norm lput "epsilon+" selected-norm
       set group 1
       set epsilon epsilon + 0.1
+      coglogo:activate-cogniton "normative-goal"
+      coglogo:set-cogniton-value "normative-goal" 3
 
   ]
   if selected = "lambda+" [
     set selected-norm lput "lambda+" selected-norm
     set group 2
     set lambda lambda + 0.1
+        coglogo:activate-cogniton "normative-goal"
+      coglogo:set-cogniton-value "normative-goal" 3
     ]
     ]
 
@@ -456,7 +459,7 @@ to create-normative-goal
   if not empty? normative-belief [
     coglogo:activate-cogniton "normative-goal"
     if member? one-of ["epsilon+" "lambda+"] last normative-belief [
-      coglogo:set-cogniton-value "normative-goal" 3
+      coglogo:set-cogniton-value "normative-goal" 2
       if member? "epsilon+" last normative-belief
       [set epsilon 1
        set group 1
@@ -1051,7 +1054,7 @@ mu-value
 mu-value
 0
 0.5
-0.5
+0.25
 0.25
 1
 NIL
@@ -1066,7 +1069,7 @@ theta-value
 theta-value
 0
 0.5
-0.5
+0.25
 0.25
 1
 NIL

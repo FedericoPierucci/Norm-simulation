@@ -410,12 +410,16 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
       set selected-norm lput "epsilon+" selected-norm
       set group 1
       set epsilon epsilon + 0.1
+      coglogo:activate-cogniton "normative-goal"
+      coglogo:set-cogniton-value "normative-goal" 3
 
   ]
   if selected = "lambda+" [
     set selected-norm lput "lambda+" selected-norm
     set group 2
     set lambda lambda + 0.1
+        coglogo:activate-cogniton "normative-goal"
+      coglogo:set-cogniton-value "normative-goal" 3
     ]
     ]
 
@@ -455,7 +459,7 @@ to create-normative-goal
   if not empty? normative-belief [
     coglogo:activate-cogniton "normative-goal"
     if member? one-of ["epsilon+" "lambda+"] last normative-belief [
-      coglogo:set-cogniton-value "normative-goal" 3
+      coglogo:set-cogniton-value "normative-goal" 2
       if member? "epsilon+" last normative-belief
       [set epsilon 1
        set group 1
@@ -1001,7 +1005,7 @@ SWITCH
 258
 group-behavior
 group-behavior
-0
+1
 1
 -1000
 
@@ -1013,7 +1017,7 @@ CHOOSER
 norm-dynamic
 norm-dynamic
 "social-conformers" "internalizers"
-1
+0
 
 SLIDER
 0
@@ -1024,7 +1028,7 @@ deplation-rate
 deplation-rate
 0
 1
-0.44
+1.0
 0.01
 1
 NIL
