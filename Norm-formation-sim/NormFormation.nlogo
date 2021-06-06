@@ -25,6 +25,7 @@ turtles-own [
   wealth-donated
   enforcing
   cooperating
+  incoming-command
   norm-sensitivity ;; the propension of the agent to internalize/follow a norm
   normative-belief
 ]
@@ -107,6 +108,7 @@ to turtle-setup ;; turtle procedure
   set mu mu-value
   set interaction-memory []
   set normative-belief []
+  set incoming-command []
   run visualization
 end
 
@@ -159,11 +161,12 @@ to go
     adjust-triggers
     adjust-expectations
     lambda-observations
-    epsilon-observations
     build-norm
+    epsilon-observations
+    turtle-talk
     if group-behavior = true
     [
-    turtle-talk
+
     group-cognitions
     enforce-norm
     adjust-group-behavior
@@ -175,9 +178,12 @@ to go
     if wealth <= 0 [die]
     if age >= 100 [die]
    ]
-
+    carefully [
     set mean-epsilon lput mean [epsilon] of turtles mean-epsilon
     set mean-lambda lput mean [lambda] of turtles mean-lambda
+  ]
+    []
+
     tick
 end
 
@@ -401,23 +407,23 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
 
   if norms? = true [
    if threshold-2 > 2 - norm-sensitivity [
-    if norm-dynamic = "social-conformers" [
+
      select-norm
-      ]
+
   ]
   ]
 end
 
 to select-norm ;; turtle observe the norm that has internalized, and select the norm with the strongest weight. Higher cooperation rate will favor a selection for an altruist norm.
-  let norm-list table:to-list norms
-  if not empty? norm-list [
+
+  if not empty? normative-belief [
   let x epsilon
   let p 1 - epsilon
   if random-float 1 < x [
-  let selected key-with-max-value (norms)
+  let selected last normative-belief
 
      ;; altruistic norms
-  if selected = "epsilon+" [
+  if selected = "epsilon+ is mandatory" [
       set selected-norm lput "epsilon+" selected-norm
       set group 1
       set epsilon epsilon + 0.1
@@ -425,7 +431,7 @@ to select-norm ;; turtle observe the norm that has internalized, and select the 
       coglogo:set-cogniton-value "normative-goal" 3
 
   ]
-  if selected = "lambda+" [
+  if selected = "lambda+ is mandatory" [
     set selected-norm lput "lambda+" selected-norm
     set group 2
     set lambda lambda + 0.1
@@ -483,7 +489,7 @@ to enforce-norm
              [set test 0]
              ask receiver [
                if test = 1 [
-                set normative-belief lput [last normative-belief] of sender normative-belief
+                set incoming-command lput [last normative-belief] of sender incoming-command
                 ]
                ]
              ]
@@ -502,33 +508,21 @@ to adjust-expectations
   ]
 end
 
-to tell-expectation
-  if any? turtles at-points vision-points [
-    foreach last expectations [receiver ->
-      let sender myself
-      let test 0
-      ifelse abs([epsilon] of receiver - epsilon) <= theta and abs([lambda] of receiver - lambda)  <= theta
-       [set test 1]
-       [set test 0]
-       ask receiver [
-        if test = 1 [
-          let enforcers (list([who] of sender))
-          print enforcers
-          ]
-      ]
-    ]
-    ]
-end
-
 
 to adjust-group-behavior
-  if norm-dynamic = "social-conformers" [
-  if group = one-of [1 2] and last selected-norm = "lambda+"   [
+
+  if group =  1 and last selected-norm = "epsilon+"   [
     if random-float 1 < 0.5 [
      set epsilon epsilon + 0.1
     ]
+
+ if group = 2 and last selected-norm = "lambda+" [
+         if random-float 1 < 0.5 [
+     set lambda lambda + 0.1
     ]
   ]
+  ]
+
 end
 
 
@@ -608,6 +602,12 @@ to color-agents-by-cooperation
   set color blue + (epsilon * 5 - 25)
   ]
   [set color red + (epsilon * 5 - 20)]
+end
+
+to color-agents-by-norms
+  ifelse not empty? selected-norm
+  [set color blue]
+  [set color red]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -695,8 +695,8 @@ CHOOSER
 150
 visualization
 visualization
-"no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation"
-3
+"no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation" "color-agents-by-norms"
+4
 
 PLOT
 720
@@ -942,7 +942,7 @@ SWITCH
 218
 norms?
 norms?
-1
+0
 1
 -1000
 
@@ -967,16 +967,6 @@ group-behavior
 0
 1
 -1000
-
-CHOOSER
-120
-220
-262
-265
-norm-dynamic
-norm-dynamic
-"social-conformers" "internalizers"
-0
 
 SLIDER
 0
@@ -1395,14 +1385,14 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="10" runMetricsEveryStep="false">
+  <experiment name="experiment" repetitions="20" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="500"/>
+    <timeLimit steps="1000"/>
     <metric>storage</metric>
     <metric>mean mean-epsilon</metric>
     <metric>mean mean-lambda</metric>
-    <metric>count turtles with [group = 1]</metric>
+    <metric>count turtles with [group = one-of [1 2]]</metric>
     <enumeratedValueSet variable="group-behavior">
       <value value="true"/>
     </enumeratedValueSet>
@@ -1437,14 +1427,14 @@ NetLogo 6.1.1
       <value value="true"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="experiment-no-norms" repetitions="10" runMetricsEveryStep="false">
+  <experiment name="experiment-no-norms" repetitions="20" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="500"/>
+    <timeLimit steps="1000"/>
     <metric>storage</metric>
     <metric>mean mean-epsilon</metric>
     <metric>mean mean-lambda</metric>
-    <metric>count turtles with [group = 1]</metric>
+    <metric>count turtles with [group = one-of  [1 2]]</metric>
     <enumeratedValueSet variable="group-behavior">
       <value value="true"/>
     </enumeratedValueSet>
@@ -1460,9 +1450,6 @@ NetLogo 6.1.1
     <enumeratedValueSet variable="mu-value">
       <value value="0.5"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="norm-dynamic">
-      <value value="&quot;social-conformers&quot;"/>
-    </enumeratedValueSet>
     <enumeratedValueSet variable="theta-value">
       <value value="0.5"/>
     </enumeratedValueSet>
@@ -1471,6 +1458,44 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="visualization">
       <value value="&quot;color-agents-by-cooperation&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="group-behavior">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="selfish-norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="norms?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="depletion">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mu-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="norm-dynamic">
+      <value value="&quot;social-conformers&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="visualization">
+      <value value="&quot;color-agents-by-cooperation&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="deplation-rate">
+      <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-population">
       <value value="100"/>
