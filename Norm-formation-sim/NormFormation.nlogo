@@ -6,28 +6,25 @@ turtles-own [
   vision          ;; the distance that this turtle can see in the horizontal and vertical directions
   vision-points   ;; the points that this turtle can see in relative to it's current position (based on vision)
   norms          ;;  the list of norms internalized by each agents
-  cooperation-rate ;; a dynamic variable ranging from 0 to 1 that express used to generate lambda and epsilon
-  lambda  ;;   a dynamic variable ranging from 0 to 1  that express the percentage of the amount of wealth given to the storage,
-          ;;  cooperative turtles will generally have higher lambda factor, but not necessarely
-          ;; (ex. one turtle- could cooperate very often but give very little,
-          ;; another could cooperate a few times but could be very altruistic)
-  epsilon ;; a dynamic variable ranging from 0 to 1 that express the probabily of giving to the central storage and the altruism of the turtle
+  cooperation-rate ;; a variable ranging from 0 to 1 that express used to generate lambda and epsilon
+  lambda  ;;  a  variable ranging from 0 to 1  that express the percentage of the amount of wealth owned by the turtle that is  given to the STORAGE,
+  epsilon ;; a dynamic ranging from 0 to 1 that express the probabily of giving to the central STORAGE
   age ;; the age of the turtle
   threshold-1 ;; first threshold-value for norm-internalization
   threshold-2 ;; second threshold-value for norm selection and execution
   expectations ;; ID list of other agents in sight
   observed-norm-actions
   selected-norm
-  group
+  group ;; the group of the turtle
   theta ;; opinion threshold
   mu ;; convergence value
-  interaction-memory
-  wealth-donated
+  interaction-memory ;; a list in which the agents with whom the agent have successfully interacted are stored
+  wealth-donated ;; the amount of wealth that the turtle has donated to the storage
   enforcing
   cooperating
-  incoming-command
+  incoming-command ;; a list of the deontic commands that the turtle has received
   norm-sensitivity ;; the propension of the agent to internalize/follow a norm
-  normative-belief
+  normative-belief ;; the current belief of the turtle
 ]
 
 
@@ -39,14 +36,14 @@ patches-own [
 ]
 
 globals [
-  storage  ;; amount in the central storage
-  accumulated-storage
-  counter
-  payoff-ticks
-  increment-values
-  deontics
-  mean-epsilon
-  mean-lambda
+  STORAGE  ;; amount in the central STORAGE
+  ACCUMULATED-STORAGE
+  COUNTER
+  PAYOFF-TICKS
+  INCREMENT-VALUES
+  DEONTICS
+  MEAN-EPSILON
+  MEAN-LAMBDA
 
 
 ;;
@@ -57,13 +54,13 @@ to setup
   clear-all
   create-turtles initial-population [ coglogo:init-cognitons  turtle-setup]
   setup-patches
-  set counter 0
-  set payoff-ticks []
-  set increment-values []
-  set accumulated-storage []
-  set deontics ["mandatory"]
-  set mean-epsilon []
-  set mean-lambda []
+  set COUNTER 0
+  set PAYOFF-TICKS []
+  set INCREMENT-VALUES []
+  set ACCUMULATED-STORAGE []
+  set DEONTICS ["mandatory"]
+  set MEAN-EPSILON []
+  set MEAN-LAMBDA []
   reset-ticks
 end
 
@@ -135,16 +132,18 @@ to go
   if not any? turtles [
     stop
   ]
-  set counter counter + 1
+  set COUNTER COUNTER + 1
+  ;; The common storage is updated, and if the right conditions are met, some sugar is redistribuited on the patches
   update-storage
+  ;; The patches regrow their sugar, and get recolored
   ask patches [
     patch-growback
     patch-recolor
   ]
-
-  if depletion = true [ ;; patches lose sugar every n ticks (the amount lost is controlled by the "deplation-rate" switch)
+  ;; The patches lose sugar every n ticks (can be deactivated in the interface, the amount lost is controlled by the "deplation-rate" switch)
+  if depletion = true [
     let depletion-time n-values 1000 [n -> n * 100]
-    if member? counter depletion-time [
+    if member? COUNTER depletion-time [
       ask patches [
         set max-psugar max-psugar - deplation-rate
         if max-psugar < 0 [set max-psugar 0]
@@ -154,22 +153,33 @@ to go
 
   ask turtles [
     set age age + 1
+    ;; run the visualization procedure
     run visualization
+    ;; turtles eat the sugar that is on the patches on which they are located
     turtle-eat
+    ;; turtles move to the nearest free patch with more sugar then the current one
     turtle-move
+    ;; turtles act following the congiton mechanism ( modified by pressing the "coglogo-editor" in the interface")
     act-on-cognitons
+    ;; turtles adjust their triggers for internalizing and following a norm
     adjust-triggers
+    ;; turtles build their expectation list, looking for other agents in-sight
     adjust-expectations
+    ;; turtles adjust their lambda value
     lambda-observations
+    ;; turtle internalize the most salient action stored in observed-norm-action
     build-norm
+    ;; turtle adjust their epsilon value
     epsilon-observations
-    turtle-talk
     if group-behavior = true
     [
-
+    ;; turtles modify their behavior according to deffuant model of opinion dynamic
+    turtle-talk
+    ;; turtle modify their behavior according to their group belonging
     group-cognitions
+    ;; turtle send a deontic-command to other turtles in sight that pass that have similar epsilon-value
+    ;; the message is reinforced if other turltes in sight belong to the same group of the sender-turtle
     enforce-norm
-    adjust-group-behavior
     ]
    adjust-behavior
     run coglogo:choose-next-plan
@@ -179,8 +189,8 @@ to go
     if age >= 100 [die]
    ]
     carefully [
-    set mean-epsilon lput mean [epsilon] of turtles mean-epsilon
-    set mean-lambda lput mean [lambda] of turtles mean-lambda
+    set MEAN-EPSILON lput mean [epsilon] of turtles MEAN-EPSILON
+    set MEAN-LAMBDA lput mean [lambda] of turtles MEAN-LAMBDA
   ]
     []
 
@@ -223,7 +233,7 @@ to contribution-cognitions
     ]
 
     if epsilon < (0.5) and epsilon > (0.1) [ ;; selfish turtles
-      coglogo:set-cogniton-value "wantcontribute" 0
+      coglogo:set-cogniton-value "wantcontribute" 0.5
     coglogo:set-cogniton-value "wantsugar" 0.5 + epsilon
       ]
 
@@ -326,12 +336,6 @@ to epsilon-observations ;; build norm-actions from observing enviroment
 
 end
 
-to adjust-behavior
-  if epsilon > 1 [set epsilon 1]
-  if epsilon < 0 [set epsilon 0]
-  if lambda > 1 [set lambda 1]
-  if lambda < 0 [set lambda 0]
-end
 
 to turtle-contribute
   if wealth > 50 [
@@ -339,7 +343,7 @@ to turtle-contribute
     let amount-given wealth * (lambda)
     set wealth wealth - amount-given
     set wealth-donated wealth-donated + amount-given
-    set storage storage + amount-given
+    set STORAGE STORAGE + amount-given
     set cooperating 1
     ]
     [set cooperating 0]
@@ -348,7 +352,7 @@ end
 
 
 to turtle-reproduce
-  if initial-population * 4 > count turtles [
+  if initial-population * population-cap > count turtles [
   if wealth > 100 and age > 45 [
     set wealth wealth - 50
     let target-1 [lambda] of self
@@ -394,7 +398,7 @@ to adjust-triggers
 end
 
 to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes internalized. If norm is present, add the weight of the norm
-  if threshold-1 > 2 - norm-sensitivity [
+  if threshold-1 > norm-threshold - norm-sensitivity [
     if not empty? observed-norm-actions [
       let internalized last observed-norm-actions
       ifelse not table:has-key? norms internalized
@@ -406,7 +410,7 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
   ]
 
   if norms? = true [
-   if threshold-2 > 2 - norm-sensitivity [
+   if threshold-2 > norm-threshold - norm-sensitivity [
 
      select-norm
 
@@ -444,13 +448,13 @@ if selfish-norms? = true [
 
 if random-float 1 < p [
   let selected key-with-max-value (norms)
-  if selected = "epsilon-" [
+  if selected = "epsilon- is mandatory" [
       set selected-norm lput "epsilon-" selected-norm
       set group -1
       set epsilon epsilon - 0.1
         ]
 
-  if selected = "lambda-" [
+  if selected = "lambda- is mandatory" [
     set selected-norm lput "lambda-" selected-norm
     set group -2
     set lambda lambda - 0.1
@@ -465,7 +469,7 @@ to build-normative-belief
   if not empty? norm-list [
     let selected key-with-max-value norms
     let belief-first word selected " is "
-    let full-belief word belief-first one-of deontics
+    let full-belief word belief-first one-of DEONTICS
     if not member? full-belief normative-belief [
       set normative-belief lput full-belief normative-belief
     ]
@@ -506,24 +510,18 @@ to adjust-expectations
       set expectations lput [who] of other turtles at-points vision-points expectations
     ]
   ]
+
+
+end
+
+to adjust-behavior
+  if epsilon > 1 [set epsilon 1]
+  if epsilon < 0 [set epsilon 0]
+  if lambda > 1 [set lambda 1]
+  if lambda < 0 [set lambda 0]
 end
 
 
-to adjust-group-behavior
-
-  if group =  1 and last selected-norm = "epsilon+"   [
-    if random-float 1 < 0.5 [
-     set epsilon epsilon + 0.1
-    ]
-
- if group = 2 and last selected-norm = "lambda+" [
-         if random-float 1 < 0.5 [
-     set lambda lambda + 0.1
-    ]
-  ]
-  ]
-
-end
 
 
 ;;;
@@ -531,20 +529,20 @@ end
 ;;;
 
 to update-storage
-  set payoff-ticks n-values 100 [n -> n * 50]
+  set PAYOFF-TICKS n-values 100 [n -> n * 50]
   if resources-redistribution = true [
-    if member? counter payoff-ticks [
-      set accumulated-storage lput round(storage) accumulated-storage
+    if member? COUNTER PAYOFF-TICKS [
+      set ACCUMULATED-STORAGE lput round(STORAGE) ACCUMULATED-STORAGE
       let increments n-values 1000 [n -> n * 1000]
-      if length accumulated-storage > 1 [
-       let second-last last (but-last accumulated-storage)
-       foreach increments [ x -> if storage > x and storage - second-last >= 1000 [ ;; if, from the last payoff tick, the storage has grown of more than 1000 units, redistribute resources
+      if length ACCUMULATED-STORAGE > 1 [
+       let second-last last (but-last ACCUMULATED-STORAGE)
+       foreach increments [ x -> if STORAGE > x and STORAGE - second-last >= 1000 [ ;; if, from the last payoff tick, the STORAGE has grown of more than 1000 units, redistribute resources
         ask patches [
-          set max-psugar max-psugar + 0.5
-          set incremented-psugar lput 0.5 incremented-psugar
+          set max-psugar max-psugar + sugar-increment
+          set incremented-psugar lput sugar-increment incremented-psugar
           let total-increment sum incremented-psugar
-          set storage storage - total-increment
-          if storage < 0 [set storage 0]
+          set STORAGE STORAGE - total-increment
+          if STORAGE < 0 [set STORAGE 0]
           ]
         ]
        ]
@@ -693,8 +691,8 @@ CHOOSER
 105
 290
 150
-visualization
-visualization
+Visualization
+Visualization
 "no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation" "color-agents-by-norms"
 4
 
@@ -739,57 +737,21 @@ SLIDER
 15
 290
 48
-initial-population
-initial-population
+Initial-population
+Initial-population
 10
 500
-100.0
+150.0
 10
 1
 NIL
 HORIZONTAL
 
-PLOT
-720
-175
-940
-330
-Average vision
-NIL
-NIL
-0.0
-10.0
-0.0
-6.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks mean [vision] of turtles"
-
-PLOT
-950
-175
-1170
-330
-Average metabolism
-NIL
-NIL
-0.0
-10.0
-0.0
-5.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks mean [metabolism] of turtles"
-
 MONITOR
-150
-275
-245
-320
+875
+330
+970
+375
 population
 count turtles
 17
@@ -798,10 +760,10 @@ count turtles
 
 PLOT
 725
-335
+175
 1170
-485
-storage
+325
+Storage
 NIL
 NIL
 0.0
@@ -815,44 +777,44 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot storage"
 
 MONITOR
-0
-275
-82
-320
-pure altruists
-count turtles with [ epsilon >= 0.9]
+725
+330
+807
+375
+Pure altruists
+count turtles with [epsilon >= 0.9]
 17
 1
 11
 
 MONITOR
-85
-275
-142
-320
-altruists
+810
+330
+867
+375
+Altruists
 count turtles with [ epsilon >= 0.5 and epsilon < 0.9]
 17
 1
 11
 
 MONITOR
-0
-325
-77
-370
-pure selfish
+725
+380
+802
+425
+Pure selfish
 count turtles with [ epsilon <= 0.1 ]
 17
 1
 11
 
 MONITOR
-80
-325
-145
-370
-selfish
+805
+380
+870
+425
+Selfish
 count turtles with [ epsilon > 0.1 and epsilon < 0.5]
 17
 1
@@ -860,9 +822,9 @@ count turtles with [ epsilon > 0.1 and epsilon < 0.5]
 
 BUTTON
 0
-445
+460
 152
-478
+493
 edit-cognitive-scheme
 coglogo:openeditor
 NIL
@@ -876,10 +838,10 @@ NIL
 1
 
 MONITOR
-150
-325
-247
-370
+875
+380
+972
+425
 storage
 round(storage)
 17
@@ -891,7 +853,7 @@ PLOT
 420
 490
 570
-altruist-groups
+Altruist-groups
 NIL
 NIL
 0.0
@@ -910,7 +872,7 @@ PLOT
 420
 690
 570
-selfish-groups
+Selfish-groups
 NIL
 NIL
 0.0
@@ -925,56 +887,56 @@ PENS
 "lambda-" 1.0 0 -2674135 true "" "carefully [plot count turtles with [group = -2]][]"
 
 SWITCH
-5
+0
 150
-192
+170
 183
-resources-redistribution
-resources-redistribution
-0
+Resources-redistribution
+Resources-redistribution
+1
 1
 -1000
 
 SWITCH
-10
+0
 185
-113
+103
 218
-norms?
-norms?
+Norms?
+Norms?
 0
 1
 -1000
 
 SWITCH
-115
+105
 185
-247
+237
 218
-selfish-norms?
-selfish-norms?
+Selfish-norms?
+Selfish-norms?
 1
 1
 -1000
 
 SWITCH
 0
-225
-115
-258
-group-behavior
-group-behavior
+220
+142
+253
+Group-behavior
+Group-behavior
 0
 1
 -1000
 
 SLIDER
 0
-410
+355
 182
-443
-deplation-rate
-deplation-rate
+388
+Deplation-rate
+Deplation-rate
 0
 1
 1.0
@@ -984,26 +946,26 @@ NIL
 HORIZONTAL
 
 SWITCH
-0
-375
-102
-408
-depletion
-depletion
+170
+150
+270
+183
+Depletion
+Depletion
 0
 1
 -1000
 
 SLIDER
 0
-480
+390
 172
-513
-mu-value
-mu-value
+423
+Mu-value
+Mu-value
 0
 0.5
-0.5
+0.25
 0.25
 1
 NIL
@@ -1011,15 +973,60 @@ HORIZONTAL
 
 SLIDER
 0
-510
+425
 172
-543
-theta-value
-theta-value
+458
+Theta-value
+Theta-value
 0
 0.5
-0.5
 0.25
+0.25
+1
+NIL
+HORIZONTAL
+
+SLIDER
+0
+250
+172
+283
+Population-cap
+Population-cap
+0
+5
+3.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+0
+285
+172
+318
+Norm-threshold
+Norm-threshold
+0
+5
+2.1
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+0
+320
+172
+353
+Sugar-increment
+Sugar-increment
+0
+1
+0.5
+0.1
 1
 NIL
 HORIZONTAL
@@ -1027,11 +1034,11 @@ HORIZONTAL
 @#$#@#$#@
 ## WHAT IS IT?
 
-This first model in the NetLogo Sugarscape suite implements Epstein & Axtell's Sugarscape Immediate Growback model, as described in chapter 2 of their book Growing Artificial Societies: Social Science from the Bottom Up. It simulates a population with limited, spatially-distributed resources available.
+This model build a simulation of a public-good game in which one can study the emergence of norms of cooperation between selfish agents, and the formation of groups related to those norms. The model is design on a sugarscape enviroment (Epstein Axtell 1996) in which agents move into the space extracting sugar that is present, in different amounts, on the patches. 
 
 ## HOW IT WORKS
 
-Each patch contains some sugar, the maximum amount of which is predetermined. At each tick, each patch grows back fully to have the maximum amount of sugar. The amount of sugar a patch currently contains is indicated by its color; the darker the yellow, the more sugar.
+Each patch contains some sugar, the maximum amount of which is predetermined. At each tick, each patch grows back fully to have the maximum amount of sugar. The amount of sugar a patch currently contains is indicated by its color; 
 
 At setup, agents are placed at random within the world. Each agent can only see a certain distance horizontally and vertically. At each tick, each agent will move to the nearest unoccupied location within their vision range with the most sugar, and collect all the sugar there.  If its current location has as much or more sugar than any unoccupied location it can see, it will stay put.
 
@@ -1039,13 +1046,33 @@ Agents also use (and thus lose) a certain amount of sugar each tick, based on th
 
 ## HOW TO USE IT
 
+Press the "EDIT-COGNITIVE-SCHEME" before pressing SETUP. This modify the cognitive structure of the agents, making certain behavior more or less likely, and one can add or subtract the weight of certain desires of the agents, that are connected to a set of actions
+
 Set the INITIAL-POPULATION slider before pressing SETUP. This determines the number of agents in the world.
+
+Set the POPULATION-CAP to limit the number of agents (the cap is the value of the slider multiplied by the initial-population value)
+
+Set the NORM-THRESHOLD slider to make less likely that agents internalize a norm. With higher values, more norm-following agents are required in sight of a given agent for making a norm internalized
+
+Set the SUGAR-INCREMENT slider to modify the amount of sugar that is redistribuited to each pach after 50 ticks
+
+Set the DEPLETION-RATE slider to modify the amount of sugar that patches lose every 50 ticks
+
+Set the MU-VALUE SLIDER to modify the interval of the "epsilon" value in which two agents can modify their epsilon value
+
+Set the THETA-VALUE slider to modify the interval of the "epsilon" value in which two agents can communicate effectivly between each-other
 
 Press SETUP to populate the world with agents and import the sugar map data. GO will run the simulation continuously, while GO ONCE will run one tick.
 
-The VISUALIZATION chooser gives different visualization options and may be changed while the GO button is pressed. When NO-VISUALIZATION is selected all the agents will be red. When COLOR-AGENTS-BY-VISION is selected the agents with the longest vision will be darkest and, similarly, when COLOR-AGENTS-BY-METABOLISM is selected the agents with the lowest metabolism will be darkest.
+The VISUALIZATION chooser gives different visualization options and may be changed while the GO button is pressed. 
+When NO-VISUALIZATION is selected all the agents will be red. 
+When COLOR-AGENTS-BY-VISION is selected the agents with the longest vision will be darkest.
+COLOR-AGENTS-BY-METABOLISM is selected the agents with the lowest metabolism will be darkest. 
+When COLOR-AGENTS-BY-COOPERATION is selected the agents with an epsilon value >= 0.5 will be colored in blue, and the agent with an epsilon value < 0.5 will be colored in red.
+When COLOR-AGENTS-BY-NORMS is selected. the agents that are currently following a norm will be displayed in blue, those who are not, in red.
 
-The four plots show the world population over time, the distribution of sugar among the agents, the mean vision of all surviving agents over time, and the mean metabolism of all surviving agents over time.
+The three plots show the world population over time, the distribution of sugar among the agents, the amount of sugar stored in the storage.
+The monitors show the type of agents that are currently present in the world, ranked by their altruism level.
 
 ## THINGS TO NOTICE
 
@@ -1466,42 +1493,53 @@ NetLogo 6.1.1
       <value value="true"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="experiment-no-storage" repetitions="50" sequentialRunOrder="false" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
+    <timeLimit steps="1000"/>
     <metric>count turtles</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="true"/>
+    <metric>storage</metric>
+    <metric>mean mean-epsilon</metric>
+    <metric>mean mean-lambda</metric>
+    <metric>count turtles with [group = one-of [1 2]]</metric>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.5"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
+    <enumeratedValueSet variable="Resources-redistribution">
       <value value="false"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
+    <enumeratedValueSet variable="Initial-population">
+      <value value="150"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Population-cap">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Group-behavior">
       <value value="true"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="depletion">
+    <enumeratedValueSet variable="Selfish-norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norm-threshold">
+      <value value="2.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Mu-value">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norms?">
       <value value="true"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="mu-value">
-      <value value="0.5"/>
+    <enumeratedValueSet variable="Depletion">
+      <value value="true"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="norm-dynamic">
-      <value value="&quot;social-conformers&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="theta-value">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="deplation-rate">
+    <enumeratedValueSet variable="Deplation-rate">
       <value value="1"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.25"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
