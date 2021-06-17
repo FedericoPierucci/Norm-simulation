@@ -411,8 +411,8 @@ to build-norm   ;; if a frist threshold test is succesfull, norm-action becomes 
 
   if norms? = true [
    if threshold-2 > norm-threshold - norm-sensitivity [
-
-     select-norm
+   select-norm
+   change-norm
 
   ]
   ]
@@ -464,6 +464,16 @@ if random-float 1 < p [
   ]
 end
 
+to change-norm
+  if not empty? normative-belief [
+    if not empty? incoming-command [
+      if last normative-belief != last incoming-command [
+        set normative-belief lput last incoming-command normative-belief
+      ]
+    ]
+  ]
+end
+
 to build-normative-belief
   let norm-list table:to-list norms
   if not empty? norm-list [
@@ -509,9 +519,18 @@ to adjust-expectations
     if not member? [who] of other turtles at-points vision-points expectations [
       set expectations lput [who] of other turtles at-points vision-points expectations
     ]
+
+  if not empty? incoming-command [
+      if any? other turtles at-points vision-points with [not empty? normative-belief] [
+      if not member? [who] of other turtles at-points vision-points expectations [
+       carefully [
+      set expectations lput [who] of other turtles at-points vision-points with [last normative-belief = [last incoming-command] of self] expectations
+    ]
+    []
+    ]
+      ]
+    ]
   ]
-
-
 end
 
 to adjust-behavior
@@ -694,7 +713,7 @@ CHOOSER
 Visualization
 Visualization
 "no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation" "color-agents-by-norms"
-4
+3
 
 PLOT
 720
@@ -893,7 +912,7 @@ SWITCH
 183
 Resources-redistribution
 Resources-redistribution
-1
+0
 1
 -1000
 
@@ -1412,95 +1431,14 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="20" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="1000"/>
-    <metric>storage</metric>
-    <metric>mean mean-epsilon</metric>
-    <metric>mean mean-lambda</metric>
-    <metric>count turtles with [group = one-of [1 2]]</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="depletion">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mu-value">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norm-dynamic">
-      <value value="&quot;social-conformers&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="theta-value">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="deplation-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="experiment-no-norms" repetitions="20" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="1000"/>
-    <metric>storage</metric>
-    <metric>mean mean-epsilon</metric>
-    <metric>mean mean-lambda</metric>
-    <metric>count turtles with [group = one-of  [1 2]]</metric>
-    <enumeratedValueSet variable="group-behavior">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="selfish-norms?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="norms?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="depletion">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mu-value">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="theta-value">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="deplation-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="visualization">
-      <value value="&quot;color-agents-by-cooperation&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="experiment-no-storage" repetitions="50" sequentialRunOrder="false" runMetricsEveryStep="true">
+  <experiment name="experiment-no-storage" repetitions="50" sequentialRunOrder="false" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000"/>
     <metric>count turtles</metric>
-    <metric>storage</metric>
-    <metric>mean mean-epsilon</metric>
-    <metric>mean mean-lambda</metric>
+    <metric>round storage</metric>
+    <metric>precision mean mean-epsilon 3</metric>
+    <metric>precision mean mean-lambda 3</metric>
     <metric>count turtles with [group = one-of [1 2]]</metric>
     <enumeratedValueSet variable="Sugar-increment">
       <value value="0.5"/>
@@ -1525,6 +1463,104 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="Visualization">
       <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Mu-value">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Depletion">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Deplation-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-no-norms" repetitions="50" sequentialRunOrder="false" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="1000"/>
+    <metric>count turtles</metric>
+    <metric>round storage</metric>
+    <metric>precision mean mean-epsilon 3</metric>
+    <metric>precision mean mean-lambda 3</metric>
+    <metric>count turtles with [group = one-of [1 2]]</metric>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="150"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Population-cap">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Group-behavior">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Selfish-norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norm-threshold">
+      <value value="2.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Depletion">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Mu-value">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Deplation-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-norms" repetitions="50" sequentialRunOrder="false" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="500"/>
+    <metric>count turtles</metric>
+    <metric>round storage</metric>
+    <metric>mean mean-epsilon</metric>
+    <metric>mean mean-lambda</metric>
+    <metric>count turtles with [group = one-of [1 2]]</metric>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="150"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Population-cap">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Group-behavior">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Selfish-norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norm-threshold">
+      <value value="2.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-cooperation&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Mu-value">
       <value value="0.25"/>
