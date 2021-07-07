@@ -1413,7 +1413,7 @@ NetLogo 6.1.1
   <experiment name="no-norms" repetitions="100" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="500"/>
+    <timeLimit steps="1000"/>
     <metric>count turtles</metric>
     <metric>round storage</metric>
     <metric>mean-epsilon</metric>
