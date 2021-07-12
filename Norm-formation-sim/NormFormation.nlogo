@@ -65,7 +65,7 @@ to setup
   set MEAN-EPSILON []
   set MEAN-LAMBDA []
   set MEAN-WEALTH []
-  set REDISTRIBUTION-TEST 1
+  set REDISTRIBUTION-TEST 0
   reset-ticks
 end
 
@@ -164,7 +164,7 @@ to go
     ;; turtles act following the congniton mechanism (modified by pressing the "coglogo-editor" in the interface")
     act-on-cognitons
     ;; turtles adjust their triggers for internalizing and following a norm
-    adjust-triggers
+    adjust-thresholds
     ;; turtles build their expectation list, looking for other agents in-sight
     adjust-expectations
     ;; turtles adjust their lambda value
@@ -351,20 +351,20 @@ end
 
 
 to turtle-reproduce
- if count turtles <= population-cap [
+
   if wealth > 100 and age > 45 [ ;; globale
     set wealth wealth - 0.50 * wealth
     let target-1 [lambda] of self
     let target-2 [epsilon] of self
     hatch 1 [
+    turtle-setup
     if random-float 1 < 0.5 [
         set lambda target-1
         set epsilon target-2
       ]
-    set age random-in-range 0 10
-    setxy random-xcor random-ycor]
+    ]
   ]
-  ]
+
 
 end
 
@@ -373,7 +373,7 @@ end
 ;;;
 
 
-to adjust-triggers
+to adjust-thresholds
   carefully [
     let my-memory interaction-memory
     let x count other turtles at-points vision-points with [member? who my-memory]
@@ -546,6 +546,7 @@ to update-storage
        foreach increments [ x -> if STORAGE > x and STORAGE - second-last >= 1000 [
        set redistribution-test  1 ;; if, from the last payoff tick, the STORAGE has grown of more than 1000 units, redistribute resources
           ]
+
         ]
         ask patches [
           if REDISTRIBUTION-TEST  = 1 [
@@ -705,7 +706,7 @@ CHOOSER
 Visualization
 Visualization
 "no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation" "color-agents-by-norms"
-4
+3
 
 PLOT
 720
@@ -752,7 +753,7 @@ Initial-population
 Initial-population
 10
 100
-100.0
+40.0
 10
 1
 NIL
@@ -896,7 +897,7 @@ SWITCH
 218
 Norms?
 Norms?
-0
+1
 1
 -1000
 
@@ -907,7 +908,7 @@ SWITCH
 253
 Group-behavior
 Group-behavior
-0
+1
 1
 -1000
 
@@ -920,7 +921,7 @@ Deplation-rate
 Deplation-rate
 0
 1
-1.0
+0.25
 0.01
 1
 NIL
@@ -946,7 +947,7 @@ Mu-value
 Mu-value
 0
 0.5
-0.25
+0.0
 0.25
 1
 NIL
@@ -976,7 +977,7 @@ Norm-threshold
 Norm-threshold
 0
 5
-2.0
+2.1
 0.1
 1
 NIL
@@ -991,23 +992,8 @@ Sugar-increment
 Sugar-increment
 0
 1
-1.0
+0.2
 0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-0
-250
-172
-283
-Population-cap
-Population-cap
-0
-1000
-500.0
-50
 1
 NIL
 HORIZONTAL
@@ -1022,6 +1008,28 @@ Choice-mechanism
 1
 1
 -1000
+
+MONITOR
+750
+465
+837
+510
+epsilon-group
+count turtles with [group = 1]
+17
+1
+11
+
+MONITOR
+840
+465
+920
+510
+lambda-group
+count turtles with [group = 2]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1507,6 +1515,48 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="Deplation-rate">
       <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment" repetitions="10" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="1000"/>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="40"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Choice-mechanism">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Group-behavior">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norm-threshold">
+      <value value="2.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-cooperation&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Mu-value">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Norms?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Depletion">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Deplation-rate">
+      <value value="0.25"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Theta-value">
       <value value="0.25"/>
