@@ -872,8 +872,8 @@ SLIDER
 220
 177
 253
-sugar-increment
-sugar-increment
+Sugar-increment
+Sugar-increment
 0
 0.5
 0.05
