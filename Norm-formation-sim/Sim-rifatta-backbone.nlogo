@@ -5,15 +5,15 @@ globals [
   ACCUMULATED-STORAGE
   COUNTER
   PAYOFF-TICKS
-  contribution-days
+  CONTRIBUTION-DAYS
   INCREMENT-VALUES
   REDISTRIBUTION-TEST
-  contribution-test
-  body-count
-  mean-epsilon
-  mean-lambda
-  mean-wealth
-  deontics
+  CONTRIBUTION-TEST
+  BODY-COUNT
+  MEAN-EPSILON
+  MEAN-LAMBDA
+  MEAN-WEALTH
+  DEONTICS
 ]
 
 turtles-own [
@@ -147,46 +147,46 @@ end
 ;;
 
 to go
+  ;; The common storage is updated, and if the right conditions are met, some sugar is redistribuited on the patches
   set counter counter + 1
+  ;; Test if agents contribute in this tick
   test-contribution-day
+
   if not any? turtles [
     stop
   ]
   ask patches [
+     ;; The patches regrow their sugar, and get recolored
     patch-growback
     patch-recolor
   ]
   ask turtles [
     set age age + 1
-    turtle-move
-    turtle-eat
-    contribution-cognitions
+    turtle-move  ;; turtles move to the nearest free patch with more sugar then the current one
+    turtle-eat ;; turtles eat the sugar that is on the patches on which they are located
     if aggression = true [
       turtle-kill
     ]
         if social-behaviour = "mindless-conformers"[
-      epsilon-observations
-      lambda-observations
-      adjust-observations
+      epsilon-observations ;; turtle observe the beheavior of other turtles, and modify his epsilon-value
+      lambda-observations ;; turtle observe the beheavior of other turtles, and modify his lambda
+      adjust-observations ;; turte adjust epsilon and lambda values preventing them to go over 1 and under 0
   ]
     if social-behaviour = "deffuant-and-norms" [
-      turtle-talk
-      adjust-expectations
-      adjust-thresholds
-      act-on-choices
-      epsilon-action
-      build-normative-belief
-      select-normative-belief
-      lambda-action
-      adjust-observations
-      enforce-norm
+      turtle-talk ;; turtles interact with other agents according to deffuant model of opinion dynamic
+      adjust-expectations ;; turtles build their expectation list, looking for other agents in sight
+      adjust-thresholds ;; turtles adjust their triggers for internalizing and following a norm
+      epsilon-action ;; turtle observe the behaviour of other turtles and store an action on the epsilon-value with a value
+      lambda-action ;; turtle observe the behaviour of other turtles and store an action on the epsilon-value with a value
+      build-normative-belief ;; turtle build a normative belief on the mandatory action and the value of lambda associated
+      select-normative-belief ;; if the second threhsold-test is successfull, turtle select and act on the last normative belief s/he has built
+      enforce-norm ;; if a sufficient number of turtles in the same group are visible by the turtle, turtle send a normative-command to another turtle outside his group
+      act-on-choices ;; turtle choose whether to cooperate or not
     ]
-
+    contribution-cognitions ;; turtles adjust the coglogo cognitive-scheme based on their epsilon-value
     run coglogo:choose-next-plan
     coglogo:report-agent-data
-
     turtle-reproduce
-
     if wealth <= 0 or age >= age-of-death
       [ die ]
     run visualization
@@ -322,7 +322,7 @@ end
 
 to lambda-observations
   if any? other turtles at-points vision-points[
-    ifelse count other turtles at-points vision-points with [ wealth > [wealth] of self] > count other turtles at-points vision-points with [ wealth < [wealth] of self]
+    ifelse count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0]
     [set lambda lambda + 0.1]
     [set lambda lambda - 0.1]
   ]
@@ -344,7 +344,7 @@ end
 
 to lambda-action
     if any? other turtles at-points vision-points[
-    if count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0]
+    if count other turtles at-points vision-points with [ wealth > [wealth] of myself] > count other turtles at-points vision-points with  [ wealth < [wealth] of myself]
     [if threshold-1 > norm-sensitivity [
       let internalized "lambda+"
       ifelse not table:has-key? what-amount-norm internalized
@@ -365,11 +365,12 @@ to build-normative-belief
     let addendum word " with " precision lambda 1
     let complete-belief word full-belief addendum
     set stored-lambda (list( precision lambda 1))
-    if not member? full-belief normative-belief [
+    if not member? complete-belief normative-belief [
       set normative-belief lput complete-belief normative-belief
+    ]
+  ]
 
-  ]
-  ]
+
 end
 
 to select-normative-belief
@@ -485,13 +486,16 @@ to act-on-choices
         ifelse last choices > first choices [
         let addendum coglogo:get-cogniton-value "want-contribute"
         coglogo:set-cogniton-value "want-contribute" addendum + 1.5
-        set normative-belief lput last incoming-command normative-belief
-      ]
+
+            set normative-belief lput last incoming-command normative-belief
+          ]
+
         [coglogo:set-cogniton-value "want-contribute" 0]
 
     ]
+    ]
   ]
-  ]
+
   [coglogo:set-cogniton-value "want-contribute" 0]
 
 end
@@ -686,8 +690,8 @@ CHOOSER
 95
 290
 140
-visualization
-visualization
+Visualization
+Visualization
 "no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation" "color-agents-by-norms"
 4
 
@@ -732,11 +736,11 @@ SLIDER
 15
 290
 48
-initial-population
-initial-population
+Initial-population
+Initial-population
 10
 1000
-100.0
+280.0
 10
 1
 NIL
@@ -783,8 +787,8 @@ SLIDER
 260
 170
 293
-reproduction-cost
-reproduction-cost
+Reproduction-cost
+Reproduction-cost
 0
 1
 0.5
@@ -796,10 +800,10 @@ HORIZONTAL
 SLIDER
 5
 295
-175
+187
 328
-wealth-for-reproduction
-wealth-for-reproduction
+Wealth-for-reproduction
+Wealth-for-reproduction
 0
 100
 50.0
@@ -813,11 +817,11 @@ SLIDER
 330
 177
 363
-age-of-reproduction
-age-of-reproduction
+Age-of-reproduction
+Age-of-reproduction
 25
 80
-51.0
+50.0
 1
 1
 NIL
@@ -846,8 +850,8 @@ SLIDER
 365
 177
 398
-prob-of-inheritance
-prob-of-inheritance
+Prob-of-inheritance
+Prob-of-inheritance
 0
 1
 1.0
@@ -859,10 +863,10 @@ HORIZONTAL
 SWITCH
 300
 420
-460
+487
 453
-resources-redistribution
-resources-redistribution
+Resources-redistribution
+Resources-redistribution
 0
 1
 -1000
@@ -887,8 +891,8 @@ SLIDER
 400
 177
 433
-redistribution-ticks
-redistribution-ticks
+Redistribution-ticks
+Redistribution-ticks
 0
 200
 100.0
@@ -955,8 +959,8 @@ MONITOR
 425
 560
 474
-population
-count turtles
+Population
+Count turtles
 17
 1
 12
@@ -1001,11 +1005,11 @@ SLIDER
 470
 177
 503
-sanction-value
-sanction-value
+Sanction-value
+Sanction-value
 0
 50
-0.0
+11.0
 0.5
 1
 NIL
@@ -1016,11 +1020,11 @@ SLIDER
 435
 177
 468
-contribution-ticks
-contribution-ticks
+Contribution-ticks
+Contribution-ticks
 0
 50
-8.0
+10.0
 1
 1
 NIL
@@ -1053,7 +1057,7 @@ Norm-threshold
 Norm-threshold
 0
 10
-2.0
+3.0
 1
 1
 NIL
@@ -1084,11 +1088,11 @@ body-count
 @#$#@#$#@
 ## WHAT IS IT?
 
-This second model in the NetLogo Sugarscape suite implements Epstein & Axtell's Sugarscape Constant Growback model, as described in chapter 2 of their book Growing Artificial Societies: Social Science from the Bottom Up. It simulates a population with limited, spatially-distributed resources available. It differs from Sugarscape 1 Immediate Growback in that the growback of sugar is gradual rather than instantaneous.
+This model build a simulation of a public-good game in which one can study the emergence of norms of cooperation between selfish agents, and the formation of groups related to those norms. The model is design on a sugarscape enviroment (Epstein Axtell 1996) in which agents move into the space extracting sugar that is present, in different amounts, on the patches. Agents can contibute to a central storage, modify their behavior observing others, then acquire norms on how they and other agents should behave, enforce them and form groups based on those norms.
 
 ## HOW IT WORKS
 
-Each patch contains some sugar, the maximum amount of which is predetermined. At each tick, each patch regains one unit of sugar, until it reaches the maximum amount. The amount of sugar a patch currently contains is indicated by its color; the darker the yellow, the more sugar.
+Each patch contains some sugar, the maximum amount of which is predetermined. At each tick, each patch grows back fully to have the maximum amount of sugar. The amount of sugar a patch currently contains is indicated by its color; 
 
 At setup, agents are placed at random within the world. Each agent can only see a certain distance horizontally and vertically. At each tick, each agent will move to the nearest unoccupied location within their vision range with the most sugar, and collect all the sugar there.  If its current location has as much or more sugar than any unoccupied location it can see, it will stay put.
 
@@ -1096,27 +1100,57 @@ Agents also use (and thus lose) a certain amount of sugar each tick, based on th
 
 ## HOW TO USE IT
 
+Press the "EDIT-COGNITIVE-SCHEME" before pressing SETUP. This modify the cognitive structure of the agents, making certain behavior more or less likely, and one can add or subtract the weight of certain desires of the agents, that are connected to a set of actions
+
 Set the INITIAL-POPULATION slider before pressing SETUP. This determines the number of agents in the world.
+
+Set the REPRODUCTUION-COST to change the percentage of the wealth of the agent needed for reproducing
+
+Set the WEALTH-FOR-REPRODUCTION	to change how much wealth the agent need for reproducing
+
+Set the AGE-OF-REPRODUCTION to change the minimum age of the agent required for reproducing
+
+Set the PROB-OF-INHERITENCE to change the probability for the trasmission of lambda and epsilon values from the parent agent to the child
+
+Set the NORM-THRESHOLD slider to make less likely that agents internalize a norm. With higher values, more norm-following agents are required in sight of a given agent for making a norm internalized
+
+Set the SUGAR-INCREMENT slider to modify the amount of sugar that is redistribuited to each patch
+
+Set the CONTRIBUTION-TICK slider to set after how many ticks agents give wealth to the central storage
+
+Set the REDUSTRIBUTION-TICKS slider to set after how many ticks the wealth get redistribuited to each patch
+
+Set the THETA-VALUE slider to modify the interval of the "epsilon" value in which two agents can communicate effectivly between each-other
+
+Set the SANCTION-VALUE slider to modify how much each agent sanctions other agents when they do not comply to a norm
 
 Press SETUP to populate the world with agents and import the sugar map data. GO will run the simulation continuously, while GO ONCE will run one tick.
 
-The VISUALIZATION chooser gives different visualization options and may be changed while the GO button is pressed. When NO-VISUALIZATION is selected all the agents will be red. When COLOR-AGENTS-BY-VISION is selected the agents with the longest vision will be darkest and, similarly, when COLOR-AGENTS-BY-METABOLISM is selected the agents with the lowest metabolism will be darkest.
+The VISUALIZATION chooser gives different visualization options and may be changed while the GO button is pressed. 
+When NO-VISUALIZATION is selected all the agents will be red. 
+When COLOR-AGENTS-BY-VISION is selected the agents with the longest vision will be darkest.
+COLOR-AGENTS-BY-METABOLISM is selected the agents with the lowest metabolism will be darkest. 
+When COLOR-AGENTS-BY-COOPERATION is selected the agents with an epsilon value >= 0.5 will be colored in blue, and the agent with an epsilon value < 0.5 will be colored in red.
+When COLOR-AGENTS-BY-NORMS is selected. the agents that are currently following a norm will be displayed in blue, those who are not, in red.
 
-The four plots show the world population over time, the distribution of sugar among the agents, the mean vision of all surviving agents over time, and the mean metabolism of all surviving agents over time.
+The three plots show the world population over time, the distribution of sugar among the agents, the amount of sugar stored in the storage.
+The monitors show the type of agents that are currently present in the world, ranked by their altruism level.
 
 ## THINGS TO NOTICE
 
-The world has a carrying capacity, which is lower than the initial population of the world. Agents who are born in sugarless places or who consume more sugar than the land cannot be supported by the world, and die. Other agents die from competition - although some places in the world have enough sugar to support them, the sugar supply is limited and other agents may reach and consume it first.
+After 20 ticks or so, many agents are no longer moving or are only moving a little. This is because the agents have reached places in the world where they can no longer see better unoccupied locations near them. Since all sugar grows back instantaneously each tick, agents tend to remain on the same patch.
 
-As the population stabilizes, the average vision increases while the average metabolism decreases. Agents with lower vision cannot find the better sugar patches, while agents with high metabolism cannot support themselves. The death of these agents causes the attribute averages to change.
+Agents tend to congregate in "layers" around borders where sugar production levels change. This unintended behavior comes from the limitation of the agents' vision ranges. Agents that cannot see past the current sugar production grounds have no incentive to move, and so each agent only moves to the closest location with more sugar. This effect is more less apparent depending on the initial population.
 
 ## THINGS TO TRY
 
-How dependent is the carrying capacity on the initial population size?  Is there a direct relationship?
+Try varying the initial POPULATION. What effect does the initial POPULATION have on the final stable population? Does it have an effect on the distribution of agent properties, such as vision and metabolism?
 
-## EXTENDING THE MODEL
+Try varying the Norm-threshold value. How  this affects the amount of wealth in the storage?
 
-How does changing the amount or rate of sugar growback affect the behavior of the model?
+Try varying MU and THETA value. How  does this affects the diffusion of norms?
+
+Try varying the SUGAR INCREMENT value. How this affects the general population?
 
 ## NETLOGO FEATURES
 
@@ -1128,13 +1162,12 @@ Since agents cannot see diagonally we cannot use `in-radius` to find the patches
 
 Other models in the NetLogo Sugarscape suite include:
 
-* Sugarscape 1 Immediate Growback
+* Sugarscape 2 Constant Growback
 * Sugarscape 3 Wealth Distribution
 
 ## CREDITS AND REFERENCES
 
 Epstein, J. and Axtell, R. (1996). Growing Artificial Societies: Social Science from the Bottom Up.  Washington, D.C.: Brookings Institution Press.
-
 ## HOW TO CITE
 
 If you mention this model or the NetLogo software in a publication, we ask that you include the citations below.
