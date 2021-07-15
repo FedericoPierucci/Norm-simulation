@@ -1,5 +1,6 @@
 extensions [CogLogo table]
 
+
 globals [
   STORAGE
   ACCUMULATED-STORAGE
@@ -37,7 +38,6 @@ turtles-own [
   lambda
   cooperating
   interaction-memory
-  expectations
   incoming-command
   normative-belief
   threshold-1
@@ -49,6 +49,7 @@ turtles-own [
   group
   choices
   stored-lambda
+  normative-memory
 ]
 
 patches-own [
@@ -65,6 +66,7 @@ to setup
   clear-all
   create-turtles initial-population [ coglogo:init-cognitons turtle-setup ]
   setup-patches
+  setup-norm-agents
   set storage 0
   set COUNTER 0
   set PAYOFF-TICKS []
@@ -108,14 +110,14 @@ to turtle-setup ;; turtle procedure
   [ set lambda random-float-in-range 0.4 0]
   set cooperating 0
   set interaction-memory []
-  set expectations []
   set incoming-command []
   set normative-belief []
   set choices []
   set stored-lambda []
+  set normative-memory []
+  set group "none"
   set cooperation-norm table:make
   set what-amount-norm table:make
-  set group "none"
 
 
   ;; turtles can look horizontally and vertically up to vision patches
@@ -138,6 +140,15 @@ to setup-patches
     ]
   ]
   file-close
+end
+
+to setup-norm-agents
+  ask n-of (initial-norm-agents * initial-population) turtles  [
+    set color black
+    set shape "circle"
+    set normative-belief lput "cooperating is mandatory with 0.5" normative-belief
+    set stored-lambda lput lambda stored-lambda
+  ]
 end
 
 
@@ -164,6 +175,7 @@ to go
     set age age + 1
     turtle-move  ;; turtles move to the nearest free patch with more sugar then the current one
     turtle-eat ;; turtles eat the sugar that is on the patches on which they are located
+    contribution-cognitions ;; turtles adjust the coglogo cognitive-scheme based on their epsilon-value
 
     if social-behaviour = "mindless-conformers"[
       epsilon-observations ;; turtle observe the beheavior of other turtles, and modify his epsilon-value
@@ -172,7 +184,6 @@ to go
   ]
     if social-behaviour = "deffuant-and-norms" [
       turtle-talk ;; turtles interact with other agents according to deffuant model of opinion dynamic
-      adjust-expectations ;; turtles build their expectation list, looking for other agents in sight
       adjust-thresholds ;; turtles adjust their triggers for internalizing and following a norm
       epsilon-action ;; turtle observe the behaviour of other turtles and store an action on the epsilon-value with a value
       lambda-action ;; turtle observe the behaviour of other turtles and store an action on the epsilon-value with a value
@@ -181,7 +192,7 @@ to go
       enforce-norm ;; if a sufficient number of turtles in the same group are visible by the turtle, turtle send a normative-command to another turtle outside his group
       act-on-choices ;; turtle choose whether to cooperate or not
     ]
-    contribution-cognitions ;; turtles adjust the coglogo cognitive-scheme based on their epsilon-value
+
     run coglogo:choose-next-plan
     coglogo:report-agent-data
     turtle-reproduce
@@ -232,36 +243,20 @@ to turtle-reproduce
 end
 
 to turtle-contribute
-
-  ifelse random-float 1 < epsilon [
-    if contribution-test = true [
-    let amount-given wealth * (lambda)
-    set wealth wealth - amount-given
-      set STORAGE STORAGE + amount-given
+  let a coglogo:get-cogniton-value "want-contribute"
+  let b coglogo:get-cogniton-value "want-sugar"
+  ifelse a > b  [
+    if contribution-test = true  [
       set cooperating 1
+      let amount-given wealth * lambda
+      set wealth wealth - amount-given
+      set STORAGE STORAGE + amount-given
       ]
-
   ]
   [set cooperating 0]
 
 end
 
-to movement-cognitions
-  if any? patches at-points vision-points with [not any? turtles-here]
-  [
-    if [psugar] of patch-here >= [psugar] of one-of patches at-points vision-points
-  [
-      coglogo:set-cogniton-value "want-sugar" 1
-      coglogo:set-cogniton-value "want-move"  0
-  ]
-
-    if [psugar] of patch-here < [psugar] of one-of patches at-points vision-points with [not any? turtles-here]
-  [
-      coglogo:set-cogniton-value "want-sugar" 0.2 + (metabolism / 10)
-      coglogo:set-cogniton-value "want-move" 0.6
-  ]
-  ]
-end
 
 to contribution-cognitions
     if epsilon  < (0.1) [ ;; pure selfish turtles
@@ -269,23 +264,22 @@ to contribution-cognitions
      coglogo:set-cogniton-value "want-sugar" 1
     ]
 
-    if epsilon < (0.5) and epsilon > (0.1) [ ;; selfish turtles
+    if epsilon >= (0.1) and epsilon < (0.5)   [ ;; selfish turtles
       coglogo:set-cogniton-value "want-contribute" 0.5
-    coglogo:set-cogniton-value "want-sugar" 0.5 + epsilon
+      coglogo:set-cogniton-value "want-sugar" 0.5 + epsilon
       ]
 
-    if epsilon > (0.5) and epsilon < (0.9) [ ;; altruistic turtles
+    if epsilon >= (0.5) and epsilon < (0.9) [ ;; altruistic turtles
       coglogo:set-cogniton-value "want-contribute" 1
      coglogo:set-cogniton-value "want-sugar" 1 - epsilon
 
       ]
 
-    if epsilon > (0.9)  [ ;; pure altruistic turtles
+    if epsilon >= (0.9)  [ ;; pure altruistic turtles
       coglogo:set-cogniton-value "want-contribute" 1.5
     coglogo:set-cogniton-value "want-sugar" 0
 
 ]
-
 end
 
 to epsilon-observations
@@ -307,7 +301,7 @@ end
 to epsilon-action
    if any? other turtles at-points vision-points[
     if count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0]
-    [if threshold-1 > norm-sensitivity [
+    [if threshold-1 > norm-threshold - norm-sensitivity [
       let internalized "cooperating"
       ifelse not table:has-key? cooperation-norm internalized
         [table:put cooperation-norm internalized 0.1]
@@ -321,7 +315,7 @@ end
 to lambda-action
     if any? other turtles at-points vision-points[
     if count other turtles at-points vision-points with [ wealth > [wealth] of myself] > count other turtles at-points vision-points with  [ wealth < [wealth] of myself]
-    [if threshold-1 > norm-sensitivity [
+    [if threshold-1 > norm-threshold - norm-sensitivity [
       let internalized "lambda+"
       ifelse not table:has-key? what-amount-norm internalized
         [table:put what-amount-norm internalized 0.1]
@@ -390,13 +384,6 @@ to turtle-talk
 
 end
 
-to adjust-expectations
-  if any? turtles at-points vision-points [
-    if not member? [who] of other turtles at-points vision-points expectations [
-      set expectations lput [who] of other turtles at-points vision-points expectations
-    ]
-    ]
-end
 
 to adjust-thresholds
   carefully [
@@ -412,7 +399,7 @@ to adjust-thresholds
 
   carefully [
     let target who
-    let a count other turtles at-points vision-points with [member? target last expectations]
+    let a count other turtles at-points vision-points with [last normative-belief = [last normative-belief] of myself]
     let b count other turtles at-points vision-points
   ifelse a > 0 [
     set threshold-2 b / a
@@ -433,22 +420,22 @@ to enforce-norm
             let receiver one-of other turtles at-points vision-points with [group != conversion]
             let sender self
             let test 0
-            ifelse abs([epsilon] of receiver - epsilon) <= theta-value
+            ifelse abs([epsilon] of receiver - epsilon) <= theta-value and abs(lambda - [lambda] of receiver) <= theta-value
              [set test 1]
              [set test 0]
              ask receiver [
                if test = 1 [
                 set incoming-command lput [last normative-belief] of sender incoming-command
+                set normative-memory lput [who] of sender normative-memory
                 if not empty? [stored-lambda] of sender [
-                  set stored-lambda lput last [stored-lambda] of sender stored-lambda
-    ]
-  ]
-            ]
-
+                  set stored-lambda (list( last [stored-lambda] of sender))
                 ]
-               ]
-             ]
+              ]
+            ]
           ]
+        ]
+      ]
+     ]
         ]
 end
 
@@ -456,22 +443,18 @@ end
 
 to act-on-choices
   ifelse not empty? incoming-command [
-    if not empty? expectations [
-    set choices (list ([max-psugar] of patch-here) ((length last expectations) * sanction-value ))
-    if not empty? choices [
+    if not empty? normative-memory [
+    set choices (list ([max-psugar] of patch-here) ((length normative-memory) * sanction-value ))
+      if not empty? choices [
         ifelse last choices > first choices [
-        let addendum coglogo:get-cogniton-value "want-contribute"
-        coglogo:set-cogniton-value "want-contribute" addendum + 1.5
-
-            set normative-belief lput last incoming-command normative-belief
+          let addendum coglogo:get-cogniton-value "want-contribute"
+          coglogo:set-cogniton-value "want-contribute" addendum + 1.5
+          set normative-belief lput last incoming-command normative-belief
           ]
-
         [coglogo:set-cogniton-value "want-contribute" 0]
-
-    ]
+      ]
     ]
   ]
-
   [coglogo:set-cogniton-value "want-contribute" 0]
 
 end
@@ -489,19 +472,18 @@ to update-storage
   if resources-redistribution = true [
     if member? COUNTER PAYOFF-TICKS [
       set ACCUMULATED-STORAGE lput round(STORAGE) ACCUMULATED-STORAGE
-      let increments n-values 1000 [n -> n * 1000]
+      let increments n-values 1000 [n -> n * increments-for-redistribution]
       if length ACCUMULATED-STORAGE > 1 [
        let second-last last (but-last ACCUMULATED-STORAGE)
-       foreach increments [ x -> ifelse STORAGE > x and STORAGE - second-last >= 1000 [
+       foreach increments [ x -> if STORAGE > x and STORAGE - second-last >= increments-for-redistribution [
           ask patches [
-          set max-psugar max-psugar + sugar-increment
-          set incremented-psugar lput sugar-increment incremented-psugar
+            set max-psugar max-psugar + sugar-increment
+            set incremented-psugar lput sugar-increment incremented-psugar
             foreach incremented-psugar [ inc -> let total-increment (list(last incremented-psugar))
-            set storage storage - sum total-increment
+              set storage storage - sum total-increment
             ]
           ]
           ]
-          []
           if STORAGE < 0 [set STORAGE 0]
           ]
         ]
@@ -715,7 +697,7 @@ SLIDER
 Initial-population
 Initial-population
 10
-1000
+100
 100.0
 10
 1
@@ -782,7 +764,7 @@ Wealth-for-reproduction
 Wealth-for-reproduction
 0
 100
-51.0
+50.0
 1
 1
 NIL
@@ -797,7 +779,7 @@ Age-of-reproduction
 Age-of-reproduction
 25
 80
-51.0
+50.0
 1
 1
 NIL
@@ -806,7 +788,7 @@ HORIZONTAL
 PLOT
 730
 165
-930
+940
 315
 Storage
 NIL
@@ -894,8 +876,8 @@ CHOOSER
 185
 social-behaviour
 social-behaviour
-"mindless-conformers" "deffuant-and-norms"
-0
+"mindless-conformers" "deffuant-and-norms" "none"
+1
 
 SLIDER
 5
@@ -906,7 +888,7 @@ Theta-value
 Theta-value
 0
 1
-0.25
+0.5
 0.25
 1
 NIL
@@ -984,9 +966,9 @@ SLIDER
 Sanction-value
 Sanction-value
 0
-50
-0.0
-0.5
+10
+1.3
+0.1
 1
 NIL
 HORIZONTAL
@@ -998,9 +980,9 @@ SLIDER
 463
 Contribution-ticks
 Contribution-ticks
-0
+1
 50
-5.0
+10.0
 1
 1
 NIL
@@ -1009,7 +991,7 @@ HORIZONTAL
 PLOT
 945
 320
-1185
+1385
 480
 Group-distribution
 NIL
@@ -1032,9 +1014,39 @@ SLIDER
 Norm-threshold
 Norm-threshold
 0
-10
-2.0
+3
+0.5
+0.1
 1
+NIL
+HORIZONTAL
+
+SLIDER
+5
+535
+222
+568
+Increments-for-redistribution
+Increments-for-redistribution
+0
+1000
+1000.0
+50
+1
+NIL
+HORIZONTAL
+
+SLIDER
+375
+555
+547
+588
+initial-norm-agents
+initial-norm-agents
+0
+1
+0.1
+0.1
 1
 NIL
 HORIZONTAL
