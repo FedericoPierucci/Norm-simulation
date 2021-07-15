@@ -760,9 +760,9 @@ PENS
 
 SLIDER
 5
-260
-170
-293
+255
+175
+288
 Reproduction-cost
 Reproduction-cost
 0
@@ -775,9 +775,9 @@ HORIZONTAL
 
 SLIDER
 5
-295
-170
-328
+290
+175
+323
 Wealth-for-reproduction
 Wealth-for-reproduction
 0
@@ -790,9 +790,9 @@ HORIZONTAL
 
 SLIDER
 5
-330
+325
 177
-363
+358
 Age-of-reproduction
 Age-of-reproduction
 25
@@ -823,9 +823,9 @@ PENS
 
 SLIDER
 5
-365
+360
 177
-398
+393
 Prob-of-inheritance
 Prob-of-inheritance
 0
@@ -864,9 +864,9 @@ HORIZONTAL
 
 SLIDER
 5
-400
+395
 177
-433
+428
 Redistribution-ticks
 Redistribution-ticks
 0
@@ -978,9 +978,9 @@ NIL
 
 SLIDER
 5
-470
+465
 177
-503
+498
 Sanction-value
 Sanction-value
 0
@@ -993,9 +993,9 @@ HORIZONTAL
 
 SLIDER
 5
-435
+430
 177
-468
+463
 Contribution-ticks
 Contribution-ticks
 0
@@ -1026,9 +1026,9 @@ PENS
 
 SLIDER
 5
-505
+500
 177
-538
+533
 Norm-threshold
 Norm-threshold
 0
