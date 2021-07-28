@@ -422,8 +422,8 @@ end
 
 to enforce-norm
   if any? other turtles at-points vision-points [
-    if group != "none"  [
-      let x count turtles with [group = [group] of self]
+    if group != "defectors" [
+      let x count turtles  with [group = [group] of self]
       let conversion [group] of self
        if x > count other turtles at-points vision-points [
         if not empty? normative-belief [
@@ -437,7 +437,7 @@ to enforce-norm
              ask receiver [
                if test = 1 [
                 set incoming-command lput [last normative-belief] of sender incoming-command
-                set normative-memory (list ( [who] of sender))
+                set normative-memory lput [who] of sender normative-memory
                 if not empty? [stored-lambda] of sender [
                   set stored-lambda (list( last [stored-lambda] of sender))
                 ]
@@ -455,18 +455,27 @@ end
 to act-on-choices
   ifelse not empty? incoming-command [
     if not empty? normative-memory [
-    set choices (list ([max-psugar] of patch-here) ((length normative-memory) * sanction-value ))
+      if not empty? normative-belief [
+      if member? "Not cooperating" last normative-belief [
+          let a self
+          let enforcers turtles with [member? who [normative-memory] of a]
+          let list-cooperators (list(count enforcers with [member? "cooperating" last normative-belief]))
+          set choices (list ([max-psugar] of patch-here) ((length list-cooperators * enforcement-value )))
       if not empty? choices [
         ifelse last choices > first choices [
           let addendum coglogo:get-cogniton-value "want-contribute"
           coglogo:set-cogniton-value "want-contribute" addendum + 1.5
           set normative-belief lput last incoming-command normative-belief
           ]
-        [coglogo:set-cogniton-value "want-contribute" 0]
+        [coglogo:set-cogniton-value "want-contribute" epsilon]
       ]
+        ]
     ]
-  ]
-  [coglogo:set-cogniton-value "want-contribute" 0]
+        ]
+    ]
+
+
+  [coglogo:set-cogniton-value "want-contribute" epsilon]
 
 end
 
@@ -979,11 +988,11 @@ SLIDER
 465
 177
 498
-Sanction-value
-Sanction-value
+Enforcement-value
+Enforcement-value
 0
 10
-10.0
+7.6
 0.1
 1
 NIL
@@ -1061,7 +1070,7 @@ initial-norm-agents
 initial-norm-agents
 0
 1
-0.0
+0.1
 0.1
 1
 NIL
