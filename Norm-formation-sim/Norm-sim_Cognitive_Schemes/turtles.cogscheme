@@ -32,14 +32,4 @@ turtle-contribute=1.0
 DEPENDENCY
 turtle-contribute
 REINFORCEMENT
-COG
-want-move
--8355712
-true
-0.0
-INFLUENCE
-turtle-move=0.5
-DEPENDENCY
-turtle-move
-REINFORCEMENT
 ENDCS

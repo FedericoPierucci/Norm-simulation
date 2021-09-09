@@ -308,7 +308,7 @@ to build-normative-belief
     let full-belief word belief-first first deontics
     let addendum word " with " precision lambda 3
     let complete-belief word full-belief addendum
-    set stored-lambda (list(precision lambda 3))
+
     if not member? complete-belief normative-belief [
       set normative-belief lput complete-belief normative-belief
     ]
