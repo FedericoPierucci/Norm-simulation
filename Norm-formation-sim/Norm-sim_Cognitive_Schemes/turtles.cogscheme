@@ -18,7 +18,7 @@ want-sugar
 true
 0.0
 INFLUENCE
-turtle-contribute=-0.5
+turtle-contribute=-1.0
 DEPENDENCY
 turtle-contribute
 REINFORCEMENT
