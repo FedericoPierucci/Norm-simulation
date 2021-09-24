@@ -15,6 +15,7 @@ globals [
   MEAN-WEALTH
   DEONTICS
   NORMS-ACTIVATED
+  NORMS-BUILT
 ]
 
 turtles-own [
@@ -44,10 +45,8 @@ turtles-own [
   threshold-2
   norm-sensitivity
   observations
-  cooperation-norm
+
   group
-  choices
-  stored-lambda
   normative-memory
 ]
 
@@ -108,10 +107,7 @@ to turtle-setup ;; turtle procedure
   [ set lambda random-float-in-range 0.4 0]
   set cooperating 0
   set interaction-memory []
-  set incoming-command []
   set normative-belief []
-  set choices []
-  set stored-lambda []
   set normative-memory []
   set group "none"
   set observations table:make
@@ -143,8 +139,7 @@ to setup-norm-agents
   ask n-of (initial-norm-agents * initial-population) turtles  [
     set color black
     set shape "circle"
-    set normative-belief lput word "cooperating is mandatory with " precision lambda 3 normative-belief
-    set stored-lambda lput lambda stored-lambda
+    set normative-belief sentence 1 precision lambda 1
     join-group
   ]
 end
@@ -158,6 +153,7 @@ end
 to go
   ;; The common storage is updated, and if the right conditions are met, some sugar is redistribuited on the patches
   set NORMS-ACTIVATED 0
+  set NORMS-BUILT 0
   set counter counter + 1
   ;; Test if agents contribute in this tick
   test-contribution-day
@@ -186,6 +182,8 @@ to go
       build-normative-belief ;; turtle build a normative belief on the mandatory action and the value of lambda associated
       act-normative-belief ;; if the second threhsold-test is successfull, turtle select and act on the last normative belief s/he has built
       enforce-norm ;; if a sufficient number of turtles in the same group are visible by the turtle, turtle send a normative-command to another turtle outside his group
+      join-group
+
      ]
     run coglogo:choose-next-plan
     coglogo:report-agent-data
@@ -226,17 +224,17 @@ to turtle-reproduce
     let target-1 [lambda] of self
     let target-2 [epsilon] of self
     let target-3 [normative-belief] of self
+    let heredity wealth
     set wealth wealth - wealth * reproduction-cost
     hatch 1 [
       turtle-setup
       ifelse random-float 1 < prob-of-inheritance [
         set lambda target-1
         set epsilon target-2
-
-
-       ]
+      ]
       [set lambda target-1 + random-in-range 0.1 -0.1
-      set epsilon target-2 + random-in-range 0.1 -0.1
+       set epsilon target-2 + random-in-range 0.1 -0.1
+
     ]
   ]
     ]
@@ -246,12 +244,13 @@ to turtle-contribute
   let a coglogo:get-cogniton-value "want-contribute"
   let b coglogo:get-cogniton-value "want-sugar"
   ifelse a > b  [
-    if contribution-test = true  [
+    ifelse contribution-test = true  [
       set cooperating 1
       let amount-given wealth * lambda
       set wealth wealth - amount-given
       set STORAGE STORAGE + amount-given
       ]
+    [set cooperating 0]
   ]
   [set cooperating 0]
 
@@ -295,11 +294,11 @@ to epsilon-action
    if any? other turtles at-points vision-points[
     if count other turtles at-points vision-points with [cooperating = 1] > count other turtles at-points vision-points with [cooperating = 0]
     [
-      let internalized "cooperating"
+      let internalized 1
       ifelse not table:has-key? observations internalized
-        [table:put observations internalized 0.1]
+        [table:put observations 1 0.1]
         [let i table:get-or-default observations internalized 0
-        table:put observations internalized i + 0.1 ]
+        table:put observations 1 i + 0.1 ]
 
     ]
   ]
@@ -308,52 +307,42 @@ end
 
 to build-normative-belief
   let norm-list table:to-list observations
-  if threshold-1 > norm-sensitivity [
+  if threshold-1 > norm-sensitivity  [
+  set NORMS-BUILT NORMS-BUILT + 1
   if not empty? norm-list [
     let selected key-with-max-value observations
-    let belief-first word selected " is "
-    let full-belief word belief-first first deontics
-    let addendum word " with " precision lambda 3
-    let complete-belief word full-belief addendum
-    set stored-lambda (list(precision lambda 3))
-    if not member? complete-belief normative-belief [
-      set normative-belief lput complete-belief normative-belief
-    ]
+    set normative-belief (sentence selected 1 precision lambda 1)
   ]
   ]
 
 end
 
 to act-normative-belief
-  if threshold-2 > norm-sensitivity or 1 = 1 [
+  if threshold-2 > norm-sensitivity [
     if not empty? normative-belief [
-     let selected last normative-belief
-     if member? "cooperating" selected and not member? "Not" selected [
+     if first normative-belief = 1 [
       set epsilon 1
       set NORMS-ACTIVATED NORMS-ACTIVATED + 1
       coglogo:activate-cogniton "normative-goal"
       coglogo:set-cogniton-value "normative-goal" 3
-      if not empty? stored-lambda [
-         set lambda last stored-lambda
-            let groups [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
-          foreach groups [x -> if precision last stored-lambda 1 = x  and lambda > 0 [set group x]]
+      set lambda last normative-belief
+
+
         ]
 
       ]
     ]
-  ]
 
 
 end
 
 to join-group
-  if not empty? stored-lambda [
-    if not empty? normative-belief [
-  let groups [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
-  foreach groups [x -> if precision last stored-lambda 1 = x  and lambda > 0 [set group x]]
+if not empty? normative-belief [
+  let groups [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
+    foreach groups [x -> if last normative-belief = x  [set group x]]
   ]
 
-    ]
+
 end
 
 
@@ -367,7 +356,7 @@ to turtle-talk
       ]
       ask receiver [
         if not member? [who] of sender interaction-memory [
-        set interaction-memory lput [who] of sender interaction-memory
+        set interaction-memory lput [who] of  sender interaction-memory
 
       ]
         ]
@@ -391,9 +380,11 @@ to adjust-thresholds
   [set threshold-1 0]
 
   carefully [
-    let target who
-    let a count other turtles at-points vision-points with [member? target normative-memory]
-    let b count other turtles at-points vision-points with [not member? target normative-memory]
+    let lista normative-memory
+    let total-enforcers turtles at-points vision-points with [member? who id-enforcers lista]
+    let specific-enforcers total-enforcers with [normative-belief = [normative-belief] of self]
+    let a count specific-enforcers
+    let b count turtles at-points vision-points
   ifelse a > 0 [
     set threshold-2 b / a
   ]
@@ -404,7 +395,7 @@ end
 
 to enforce-norm
   if any? other turtles at-points vision-points [
-      let x count turtles with [group = [group] of self]
+      let x count turtles  with [group != "none"]
       let conversion [group] of self
        if x > count other turtles at-points vision-points [
         if not empty? normative-belief [
@@ -417,17 +408,14 @@ to enforce-norm
              [set test 0]
              ask receiver [
                if test = 1 [
-                set incoming-command lput [last normative-belief] of sender incoming-command
-                set normative-memory lput [who] of sender normative-memory
-                if not empty? [stored-lambda] of sender [
-                  set stored-lambda (list(last [stored-lambda] of sender))
+              set normative-memory lput list [who] of sender [normative-belief] of sender normative-memory
+              set normative-belief last (last normative-memory)
                 ]
               ]
 
           ]
         ]
       ]
-     ]
         ]
 end
 
@@ -507,29 +495,13 @@ to-report key-with-max-value [table]
    norm-list
 end
 
-
-
-to-report list-form [string]
-  let i 0
-  let new-list []
-  while [i < length string] [
-    set new-list lput item i string new-list
-    set i i + 1
-  ]
-  report new-list
-end
-
-to-report int-recognition [a-list]
-  let final []
+to-report id-enforcers [a-list]
+  let enforcers-list []
   foreach a-list [x ->
-    carefully [
-    if is-number? run-result x [
-      set final lput x final
-    ]
-    ]
-    []
+    set enforcers-list lput first x a-list
   ]
-  report final
+  report enforcers-list
+
 end
 
 ;;
@@ -565,10 +537,6 @@ to color-agents-by-norms
     set color blue
   ]
 end
-
-
-; Copyright 2009 Uri Wilensky.
-; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
 300
@@ -784,7 +752,7 @@ Age-of-reproduction
 Age-of-reproduction
 25
 80
-50.0
+51.0
 1
 1
 NIL
@@ -817,7 +785,7 @@ Prob-of-inheritance
 Prob-of-inheritance
 0
 1
-1.0
+0.5
 0.1
 1
 NIL
@@ -881,7 +849,7 @@ CHOOSER
 185
 social-behaviour
 social-behaviour
-"conformers" "norms" "none"
+"conformers" "norms"
 1
 
 SLIDER
@@ -972,7 +940,7 @@ Contribution-ticks
 Contribution-ticks
 1
 50
-10.0
+49.0
 1
 1
 NIL
@@ -1011,21 +979,6 @@ Increments-for-redistribution
 NIL
 HORIZONTAL
 
-SLIDER
-0
-500
-172
-533
-initial-norm-agents
-initial-norm-agents
-0
-1
-0.0
-0.1
-1
-NIL
-HORIZONTAL
-
 PLOT
 1165
 320
@@ -1051,7 +1004,7 @@ MONITOR
 295
 320
 Defectors
-count turtles with [group = \"defectors\"]
+count turtles with [group = \"none\"]
 17
 1
 11
@@ -1069,25 +1022,51 @@ count turtles with [group != \"defectors\" and group != \"none\"]
 
 MONITOR
 185
-365
-290
 410
-Free-Agents
-count turtles with [group = \"none\"]
+295
+455
+norms-activated
+precision (norms-activated / count turtles) 2
+17
+1
+11
+
+MONITOR
+180
+365
+295
+410
+norms-built
+precision (NORMS-BUILT / count turtles) 2
 17
 1
 11
 
 MONITOR
 185
-415
-287
-460
-norms-activated
-norms-activated / count turtles
+455
+295
+500
+test
+count turtles with [not empty? normative-belief and group = \"none\"]
 17
 1
 11
+
+SLIDER
+0
+500
+172
+533
+initial-norm-agents
+initial-norm-agents
+0
+1
+0.0
+0.1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
