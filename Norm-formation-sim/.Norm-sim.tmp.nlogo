@@ -737,7 +737,7 @@ Wealth-for-reproduction
 Wealth-for-reproduction
 0
 100
-75.0
+50.0
 1
 1
 NIL
@@ -940,7 +940,7 @@ Contribution-ticks
 Contribution-ticks
 1
 50
-50.0
+1.0
 1
 1
 NIL
