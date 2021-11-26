@@ -49,6 +49,7 @@ turtles-own [
   observations
   group
   normative-memory
+  flag
 ]
 
 patches-own [
@@ -65,7 +66,7 @@ to setup
   clear-all
   create-turtles initial-population [ coglogo:init-cognitons turtle-setup ]
   setup-patches
-  setup-norm-agents
+  setup-initial-agents
   set storage 0
   set COUNTER 0
   set PAYOFF-TICKS []
@@ -138,13 +139,17 @@ to setup-patches
   file-close
 end
 
-to setup-norm-agents
+to setup-initial-agents
   ask n-of (initial-norm-agents * initial-population) turtles  [
     set color black
     set shape "circle"
     set normative-belief sentence 1 precision lambda 1
     join-group
   ]
+
+  let initial-coop n-of (initial-cooperators * initial-population) turtles
+  ask initial-coop [set epsilon 1 set flag 1 ]
+  ask turtles with [flag = 0] [set epsilon 0 set color red]
 end
 
 
@@ -157,6 +162,7 @@ to go
   ;; The common storage is updated, and if the right conditions are met, some sugar is redistribuited on the patches
   set NORMS-ACTIVATED 0
   set NORMS-BUILT 0
+  set group-distribution []
   set counter counter + 1
   ;; Test if agents contribute in this tick
   test-contribution-day
@@ -186,6 +192,7 @@ to go
       act-normative-belief ;; if the second threhsold-test is successfull, turtle select and act on the last normative belief s/he has built
       enforce-norm ;; if a sufficient number of turtles in the same group are visible by the turtle, turtle send a normative-command to another turtle outside his group
       join-group
+      group-report
 
      ]
     run coglogo:choose-next-plan
@@ -200,13 +207,16 @@ to go
     set MEAN-EPSILON  mean [epsilon] of turtles
     set MEAN-LAMBDA  mean [lambda] of turtles
     set MEAN-WEALTH mean [wealth] of turtles
-    let groups [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
-    if ticks = 500 [foreach groups [x -> set GROUP-DISTRIBUTION lput count turtles with [group = x] group-distribution]]
+
 
 
   ]
     []
   tick
+end
+
+to group-report
+  if group != "none" [set group-distribution lput group group-distribution]
 end
 
 to turtle-move ;; turtle procedure
@@ -231,7 +241,6 @@ to turtle-reproduce
     let target-1 [lambda] of self
     let target-2 [epsilon] of self
     let target-3 [normative-belief] of self
-    let heredity wealth
     set wealth wealth - wealth * reproduction-cost
     hatch 1 [
       turtle-setup
@@ -241,8 +250,7 @@ to turtle-reproduce
       ]
       [set lambda target-1 + random-in-range 0.1 -0.1
        set epsilon target-2 + random-in-range 0.1 -0.1
-
-    ]
+      ]
   ]
     ]
 end
@@ -306,7 +314,6 @@ to epsilon-action
         [table:put observations 1 0.1]
         [let i table:get-or-default observations internalized 0
         table:put observations 1 i + 0.1 ]
-
     ]
   ]
 end
@@ -321,7 +328,6 @@ to build-normative-belief
     set normative-belief (sentence selected 1 precision lambda 1)
   ]
   ]
-
 end
 
 to act-normative-belief
@@ -333,14 +339,9 @@ to act-normative-belief
       coglogo:activate-cogniton "normative-goal"
       coglogo:set-cogniton-value "normative-goal" 3
       set lambda last normative-belief
-
-
-        ]
-
-      ]
+       ]
     ]
-
-
+    ]
 end
 
 to join-group
@@ -348,8 +349,6 @@ if not empty? normative-belief [
   let groups [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
     foreach groups [x -> if last normative-belief = x  [set group x]]
   ]
-
-
 end
 
 
@@ -364,13 +363,10 @@ to turtle-talk
       ask receiver [
         if not member? [who] of sender interaction-memory [
         set interaction-memory lput [who] of  sender interaction-memory
-
-      ]
+        ]
         ]
     ]
-
-    ]
-
+  ]
 end
 
 
@@ -402,7 +398,7 @@ end
 
 to enforce-norm
   if any? other turtles at-points vision-points [
-      let x count turtles  with [group != "none"]
+      let x count turtles with [group != "none"]
       let conversion [group] of self
        if x > count other turtles at-points vision-points [
         if not empty? normative-belief [
@@ -419,8 +415,7 @@ to enforce-norm
               set normative-belief last (last normative-memory)
                 ]
               ]
-
-          ]
+        ]
         ]
       ]
         ]
@@ -441,7 +436,7 @@ to update-storage
   if resources-redistribution = true [
     if member? COUNTER PAYOFF-TICKS [
       set ACCUMULATED-STORAGE lput round(STORAGE) ACCUMULATED-STORAGE
-      let increments n-values 1000 [n -> n * increments-for-redistribution]
+      let increments n-values 10000 [n -> n * increments-for-redistribution]
       if length ACCUMULATED-STORAGE > 1 [
        let second-last last (but-last ACCUMULATED-STORAGE)
        foreach increments [ x -> if STORAGE > x and STORAGE - second-last >= increments-for-redistribution [
@@ -461,7 +456,7 @@ to update-storage
 end
 
 to test-contribution-day
-  set contribution-days n-values 1000 [n -> n * contribution-ticks]
+  set contribution-days n-values 10000 [n -> n * contribution-ticks]
   ifelse member? counter contribution-days [
     set contribution-test true
   ]
@@ -509,6 +504,18 @@ to-report id-enforcers [a-list]
   ]
   report enforcers-list
 
+end
+
+to-report mode [a-list]
+  let value 0
+  let prov []
+  foreach a-list [ x ->
+  set value length (filter [i -> i = x] a-list)
+  set prov lput value prov
+  ]
+  let position-of-mode position (max prov) prov
+  let final item position-of-mode a-list
+  report final
 end
 
 ;;
@@ -637,7 +644,7 @@ PLOT
 725
 320
 945
-475
+480
 Population
 NIL
 NIL
@@ -678,7 +685,7 @@ Initial-population
 Initial-population
 10
 100
-100.0
+50.0
 10
 1
 NIL
@@ -792,7 +799,7 @@ Prob-of-inheritance
 Prob-of-inheritance
 0
 1
-0.5
+1.0
 0.1
 1
 NIL
@@ -947,7 +954,7 @@ Contribution-ticks
 Contribution-ticks
 1
 50
-25.0
+50.0
 1
 1
 NIL
@@ -1027,39 +1034,6 @@ count turtles with [group != \"defectors\" and group != \"none\"]
 1
 11
 
-MONITOR
-185
-410
-295
-455
-norms-activated
-precision (norms-activated / count turtles) 2
-17
-1
-11
-
-MONITOR
-180
-365
-295
-410
-norms-built
-precision (NORMS-BUILT / count turtles) 2
-17
-1
-11
-
-MONITOR
-185
-455
-295
-500
-test
-count turtles with [not empty? normative-belief and group = \"none\"]
-17
-1
-11
-
 SLIDER
 0
 500
@@ -1070,6 +1044,39 @@ initial-norm-agents
 0
 1
 0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+PLOT
+295
+460
+710
+610
+Cooperation-steps
+NIL
+NIL
+0.0
+1.0
+0.0
+1.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count turtles with [cooperating = 1] / count turtles"
+
+SLIDER
+0
+535
+172
+568
+initial-cooperators
+initial-cooperators
+0
+1
+0.5
 0.1
 1
 NIL
