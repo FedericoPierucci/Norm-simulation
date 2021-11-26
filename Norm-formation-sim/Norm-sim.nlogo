@@ -16,6 +16,8 @@ globals [
   DEONTICS
   NORMS-ACTIVATED
   NORMS-BUILT
+  GROUP-DISTRIBUTION
+
 ]
 
 turtles-own [
@@ -45,7 +47,6 @@ turtles-own [
   threshold-2
   norm-sensitivity
   observations
-
   group
   normative-memory
 ]
@@ -76,6 +77,7 @@ to setup
   set mean-epsilon []
   set mean-lambda []
   set mean-wealth []
+  set GROUP-DISTRIBUTION []
   set deontics ["mandatory"]
   reset-ticks
 end
@@ -110,6 +112,7 @@ to turtle-setup ;; turtle procedure
   set normative-belief []
   set normative-memory []
   set group "none"
+
   set observations table:make
 
 
@@ -197,6 +200,10 @@ to go
     set MEAN-EPSILON  mean [epsilon] of turtles
     set MEAN-LAMBDA  mean [lambda] of turtles
     set MEAN-WEALTH mean [wealth] of turtles
+    let groups [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
+    if ticks = 500 [foreach groups [x -> set GROUP-DISTRIBUTION lput count turtles with [group = x] group-distribution]]
+
+
   ]
     []
   tick
@@ -737,7 +744,7 @@ Wealth-for-reproduction
 Wealth-for-reproduction
 0
 100
-75.0
+50.0
 1
 1
 NIL
@@ -785,7 +792,7 @@ Prob-of-inheritance
 Prob-of-inheritance
 0
 1
-1.0
+0.5
 0.1
 1
 NIL
@@ -940,7 +947,7 @@ Contribution-ticks
 Contribution-ticks
 1
 50
-50.0
+25.0
 1
 1
 NIL
@@ -1574,6 +1581,108 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="Wealth-for-reproduction">
       <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Redistribution-ticks">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-group-distribution" repetitions="100" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="501"/>
+    <metric>group-distribution</metric>
+    <enumeratedValueSet variable="Increments-for-redistribution">
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Contribution-ticks">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Growback-method">
+      <value value="&quot;Gradual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Reproduction-cost">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-behaviour">
+      <value value="&quot;norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-norm-agents">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Age-of-reproduction">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Prob-of-inheritance">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Wealth-for-reproduction">
+      <value value="50"/>
+      <value value="75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Redistribution-ticks">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="Increments-for-redistribution">
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Contribution-ticks">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Growback-method">
+      <value value="&quot;Gradual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Reproduction-cost">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-behaviour">
+      <value value="&quot;norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-norm-agents">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Age-of-reproduction">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Prob-of-inheritance">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Wealth-for-reproduction">
+      <value value="75"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Redistribution-ticks">
       <value value="100"/>
