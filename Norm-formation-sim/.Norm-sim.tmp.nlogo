@@ -807,7 +807,7 @@ Prob-of-inheritance
 Prob-of-inheritance
 0
 1
-0.5
+1.0
 0.1
 1
 NIL
@@ -820,7 +820,7 @@ SWITCH
 453
 Resources-redistribution
 Resources-redistribution
-0
+1
 1
 -1000
 
@@ -872,7 +872,7 @@ CHOOSER
 social-behaviour
 social-behaviour
 "conformers" "norms" "base"
-1
+2
 
 SLIDER
 5
