@@ -646,7 +646,7 @@ CHOOSER
 Visualization
 Visualization
 "no-visualization" "color-agents-by-vision" "color-agents-by-metabolism" "color-agents-by-cooperation" "color-agents-by-norms"
-3
+4
 
 PLOT
 725
@@ -759,7 +759,7 @@ Wealth-for-reproduction
 Wealth-for-reproduction
 0
 100
-50.0
+75.0
 1
 1
 NIL
@@ -962,7 +962,7 @@ Contribution-ticks
 Contribution-ticks
 1
 50
-10.0
+50.0
 1
 1
 NIL
@@ -1084,7 +1084,7 @@ initial-cooperators
 initial-cooperators
 0
 1
-0.2
+0.5
 0.1
 1
 NIL
@@ -1622,58 +1622,6 @@ NetLogo 6.1.1
       <value value="0.5"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="experiment-group-distribution" repetitions="100" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="501"/>
-    <metric>group-distribution</metric>
-    <enumeratedValueSet variable="Increments-for-redistribution">
-      <value value="1000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Sugar-increment">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Contribution-ticks">
-      <value value="25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Growback-method">
-      <value value="&quot;Gradual&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Reproduction-cost">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="social-behaviour">
-      <value value="&quot;norms&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-norm-agents">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Resources-redistribution">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Age-of-reproduction">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Initial-population">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Prob-of-inheritance">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Visualization">
-      <value value="&quot;color-agents-by-norms&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Wealth-for-reproduction">
-      <value value="50"/>
-      <value value="75"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Redistribution-ticks">
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Theta-value">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-  </experiment>
   <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
@@ -1715,6 +1663,116 @@ NetLogo 6.1.1
       <value value="&quot;color-agents-by-norms&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Wealth-for-reproduction">
+      <value value="75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Redistribution-ticks">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-BASE" repetitions="100" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="500"/>
+    <metric>count turtles</metric>
+    <metric>round storage</metric>
+    <metric>sum [max-psugar] of patches</metric>
+    <enumeratedValueSet variable="Increments-for-redistribution">
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Contribution-ticks">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Growback-method">
+      <value value="&quot;Gradual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Reproduction-cost">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-cooperators">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-behaviour">
+      <value value="&quot;base&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-norm-agents">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Age-of-reproduction">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Prob-of-inheritance">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Redistribution-ticks">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Wealth-for-reproduction">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Theta-value">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-norms-Total-Sugar" repetitions="100" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="500"/>
+    <metric>sum [max-psugar] of patches</metric>
+    <enumeratedValueSet variable="Increments-for-redistribution">
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Sugar-increment">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Contribution-ticks">
+      <value value="1"/>
+      <value value="25"/>
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Growback-method">
+      <value value="&quot;Gradual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Reproduction-cost">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-behaviour">
+      <value value="&quot;norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-norm-agents">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Resources-redistribution">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Initial-population">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Age-of-reproduction">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Prob-of-inheritance">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Visualization">
+      <value value="&quot;color-agents-by-norms&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Wealth-for-reproduction">
+      <value value="50"/>
       <value value="75"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Redistribution-ticks">
